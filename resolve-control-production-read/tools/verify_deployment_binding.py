@@ -26,8 +26,10 @@ import hashlib, json, os, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE); sys.path.insert(0, os.path.join(os.path.dirname(HERE), "worker"))
+sys.path.insert(0, os.path.join(os.path.dirname(HERE), "capsule"))
 import compile_production_read_policy as C
 import resolve_worker as rw                       # the profile law is IMPORTED, so the verifier and the worker cannot diverge
+import vrc_capsule_confine as confine_mod         # ...and so is the seccomp filter, so a re-built filter cannot drift from the seal
 
 PROFILE_SCHEMA = rw.PROFILE_SCHEMA
 ATTESTATION_SCHEMA = rw.ATTESTATION_SCHEMA
@@ -70,7 +72,9 @@ def verify_facade(ck, facade_dir, manifest):
     ck.check("facade.bytes_match_accepted_commit", not bad, bad)
 
 
-def verify(facade_dir, facade_manifest, worker, authority, policy, session, attestation=None, pre_launch=False):
+def verify(facade_dir, facade_manifest, worker, authority, policy, session, attestation=None, pre_launch=False, secret_file=None,
+           host_boundary=None):
+    boundary = json.load(open(host_boundary)) if host_boundary else C.HOST_PRIMITIVE
     ck = Checks()
     verify_facade(ck, facade_dir, json.load(open(facade_manifest)))
 
@@ -78,7 +82,7 @@ def verify(facade_dir, facade_manifest, worker, authority, policy, session, atte
     auth_raw = open(authority, "rb").read(); auth_sha = hashlib.sha256(auth_raw).hexdigest()
     src = json.loads(auth_raw)
     try:
-        C.validate_schema(src); ck.check("authority.schema_valid", True, src.get("authority_id"))
+        C.validate_schema(src, boundary); ck.check("authority.schema_valid", True, src.get("authority_id"))
     except C.PolicyError as e:
         ck.check("authority.schema_valid", False, e); return ck
     ck.check("authority.accepted_and_pinned", not C.acceptance_gaps(src, worker_sha), "; ".join(C.acceptance_gaps(src, worker_sha)))
@@ -99,6 +103,18 @@ def verify(facade_dir, facade_manifest, worker, authority, policy, session, atte
              isinstance(pol.get("library"), dict) and all(pol["library"].get(k) == (src.get("library") or {}).get(k) for k in ("kind", "name", "canonical_root", "physical_dev", "physical_ino")),
              (pol.get("library") or {}).get("name"))
     ck.check("policy.projects_match_authority", sorted(pol.get("projects") or []) == sorted(p["project_uuid"] for p in (src.get("projects") or [])), len(pol.get("projects") or []))
+    ck.check("policy.execution_environment_is_the_approved_capsule",
+             pol.get("execution_environment") == src.get("execution_environment") and pol.get("execution_environment") in C.EXECUTION_ENVIRONMENTS,
+             pol.get("execution_environment"))
+    ck.check("policy.host_primitive_is_the_approved_boundary",
+             pol.get("host_primitive") == src.get("host_primitive") == boundary,
+             (pol.get("host_primitive") or {}).get("host_review_manifest_sha256"))
+    ck.check("policy.caller_identity_matches_authority", pol.get("caller_identity") == src.get("caller_identity"),
+             (pol.get("caller_identity") or {}).get("hmac_key_id"))
+    ck.check("policy.caller_is_not_the_capsule_account",
+             isinstance(pol.get("caller_identity"), dict) and pol["caller_identity"].get("operator_uid") != (pol.get("host_primitive") or {}).get("capsule_uid"),
+             (pol.get("caller_identity") or {}).get("operator_uid"))
+    ck.check("policy.control_operations_are_the_governed_stop", sorted(pol.get("control_operations") or []) == sorted(C.CONTROL_OPS), pol.get("control_operations"))
 
     prof_raw = open(session, "rb").read(); prof = json.loads(prof_raw); prof_sha = hashlib.sha256(prof_raw).hexdigest()
     gov, prov = prof.get("governed") or {}, prof.get("provenance") or {}
@@ -123,6 +139,41 @@ def verify(facade_dir, facade_manifest, worker, authority, policy, session, atte
              len(gov.get("volatile_patterns") or []))
     ck.check("session.scripting_port", isinstance(gov.get("script_server_port"), int) and 0 < gov["script_server_port"] < 65536, gov.get("script_server_port"))
     ck.check("session.seal_instant", isinstance(prov.get("seal_epoch"), int) and prov["seal_epoch"] > 0, prov.get("seal_epoch"))
+    hp = gov.get("host_primitive") or {}
+    ck.check("session.binds_host_primitive", hp == pol.get("host_primitive") == boundary, hp.get("runtime_root"))
+    ck.check("session.binds_caller_identity", gov.get("caller_identity") == pol.get("caller_identity"), (gov.get("caller_identity") or {}).get("hmac_key_id"))
+    mask = gov.get("evidence_mask") or []
+    ck.check("session.evidence_mask_is_bounded_and_absolute",
+             isinstance(mask, list) and mask and len(set(mask)) == len(mask) and all(isinstance(m, str) and m.startswith("/") and m != "/" and m == os.path.normpath(m) for m in mask), mask)
+    ck.check("session.evidence_mask_does_not_hide_the_read",
+             all(not (t == m or t.startswith(m.rstrip("/") + "/")) for m in mask
+                 for t in (lib.get("canonical_root") or "/x", hp.get("runtime_root") or "/x", prov.get("profile_root") or "/x")), mask)
+    conf = gov.get("confinement") or {}
+    ck.check("session.confinement_pins_this_seccomp_filter",
+             conf.get("seccomp_filter_sha256") == hashlib.sha256(confine_mod.seccomp_program()[0]).hexdigest(), conf.get("seccomp_filter_sha256"))
+    ck.check("session.confinement_denies_the_mask_removal_calls",
+             all(n in (conf.get("denied_syscalls") or []) for n in ("mount", "umount2", "unshare", "setns", "pivot_root", "ptrace")), len(conf.get("denied_syscalls") or []))
+    ck.check("session.executable_is_the_frozen_capsule_runtime",
+             (gov.get("resolve_binary") or {}).get("realpath") == os.path.join(hp.get("runtime_root") or "/x", "bin", "resolve")
+             and (gov.get("resolve_binary") or {}).get("sha256") == hp.get("resolve_binary_sha256"),
+             (gov.get("resolve_binary") or {}).get("realpath"))
+    if boundary == C.HOST_PRIMITIVE:
+        try:
+            facts = rw.verify_host_primitive(hp) if hp else None
+            ck.check("host.approved_primitive_verifies_on_this_host", bool(facts), (facts or {}).get("broker_sha256"))
+        except (rw.OpError, KeyError, TypeError) as e:
+            ck.check("host.approved_primitive_verifies_on_this_host", False, (getattr(e, "detail", None) or {}).get("reason") or repr(e)[:120])
+    else:
+        # An injected boundary is checked structurally only: it names a capsule that does not exist on this machine, and a worker
+        # compiled against the approved constants refuses it outright. It is a staging/offline artifact, never a deployment.
+        ck.check("host.boundary_is_injected_and_not_the_approved_one", hp == boundary != C.HOST_PRIMITIVE, hp.get("runtime_root"))
+    if secret_file:
+        try:
+            key = open(secret_file, "rb").read().strip()
+            facts = rw.verify_secret_placement(os.path.abspath(secret_file), key, gov.get("caller_identity") or {}, rw.SystemProbe(), self_uid=hp.get("capsule_uid"))
+            ck.check("key.cross_account_placement", True, facts["hmac_key_id"])
+        except (rw.OpError, OSError, KeyError, TypeError) as e:
+            ck.check("key.cross_account_placement", False, (getattr(e, "detail", None) or {}).get("reason") or repr(e)[:120])
 
     # the profile ON DISK, under the worker's own law
     try:
@@ -166,12 +217,23 @@ def verify(facade_dir, facade_manifest, worker, authority, policy, session, atte
     ck.check("attestation.nonce_plaintext_absent", "nonce" not in att and not any(k for k in att if k.endswith("nonce")), sorted(k for k in att if "nonce" in k))
     ck.check("attestation.created_after_seal", isinstance(att.get("created_epoch"), int) and att["created_epoch"] >= (prov.get("seal_epoch") or 0), att.get("created_epoch"))
     ck.check("attestation.names_one_process", isinstance(att.get("resolve_pid"), int) and att["resolve_pid"] > 0 and isinstance(att.get("resolve_start_ticks"), int), att.get("resolve_pid"))
+    ck.check("attestation.binds_host_primitive", att.get("host_primitive") == hp and att.get("execution_environment") == gov.get("execution_environment"), att.get("execution_environment"))
+    ck.check("attestation.capsule_account", att.get("capsule_uid") == hp.get("capsule_uid"), att.get("capsule_uid"))
+    ck.check("attestation.resolve_has_its_own_mount_namespace",
+             isinstance(att.get("resolve_mnt_ns"), str) and isinstance(att.get("worker_mnt_ns"), str) and att["resolve_mnt_ns"] != att["worker_mnt_ns"],
+             f'{att.get("worker_mnt_ns")} vs {att.get("resolve_mnt_ns")}')
+    ck.check("attestation.resolve_is_confined",
+             att.get("resolve_no_new_privs") == 1 and att.get("resolve_seccomp") == confine_mod.SECCOMP_MODE_FILTER
+             and att.get("seccomp_filter_sha256") == conf.get("seccomp_filter_sha256") and att.get("resolve_seccomp_filters") == conf.get("seccomp_filters"),
+             f'nnp={att.get("resolve_no_new_privs")} seccomp={att.get("resolve_seccomp")} filters={att.get("resolve_seccomp_filters")}')
+    ck.check("attestation.evidence_mask_matches_the_seal", sorted(att.get("evidence_mask") or []) == sorted(mask), att.get("evidence_mask"))
     return ck
 
 
 def main(argv):
     keys = {"--facade-dir": "facade_dir", "--facade-manifest": "facade_manifest", "--worker": "worker",
-            "--authority": "authority", "--policy": "policy", "--session": "session", "--attestation": "attestation"}
+            "--authority": "authority", "--policy": "policy", "--session": "session", "--attestation": "attestation",
+            "--secret-file": "secret_file", "--host-boundary": "host_boundary"}
     args = {}; i = 1; as_json = False; pre = False
     while i < len(argv):
         if argv[i] == "--json": as_json = True; i += 1; continue

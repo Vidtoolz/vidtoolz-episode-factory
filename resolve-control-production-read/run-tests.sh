@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Offline runner for the isolated-session production-read worker CANDIDATE (pipefail, direct exit codes, no tee/tail masking,
 # per-suite minimum collected-test counts). 1) candidate suite; 2) reviewer-attack closure against the REJECTED 4ae35e7c bytes;
-# 3) prior-bypass regression against the REJECTED 59a5593d bytes; 4) qualification regression: FROZEN Phase 1 suites executed
-# unchanged against the CANDIDATE worker bytes.
+# 3) prior-bypass regression against the REJECTED 59a5593d bytes; 4) the DEDICATED_CAPSULE_V1 laws; 5) the real-kernel confinement
+# proof (a seccomp filter in a real child, and the whole capsule under rootlesskit); 6) qualification regression: FROZEN Phase 1
+# suites executed unchanged against the CANDIDATE worker bytes.
 # `./run-tests.sh --self-test` additionally proves the harness: injects one failing test, expects nonzero, restores.
 set -euo pipefail; cd "$(dirname "$0")"; export PYTHONDONTWRITEBYTECODE=1
 : "${VRC_PHASE1_ROOT:=$HOME/resolve-authority-freeze-v1.20/resolve-control}"; export VRC_PHASE1_ROOT
@@ -20,6 +21,10 @@ suite() {
   echo "== candidate suite"; run test_production_read.py . tests/test_production_read.py 76
   echo "== reviewer-attack closure (rejected 4ae35e7c bytes vs successor)"; run test_reviewer_attacks_regression.py . tests/test_reviewer_attacks_regression.py 5
   echo "== prior-bypass regression (rejected 59a5593d bytes vs successor)"; run test_prior_bypass_regression.py . tests/test_prior_bypass_regression.py 4
+  echo "== dedicated-capsule laws (host primitive, pinned scripting runtime, shared key, confinement, governed stop)"
+  run test_dedicated_capsule.py . tests/test_dedicated_capsule.py 60
+  echo "== real-kernel confinement (seccomp filter in this process; whole capsule under rootlesskit)"
+  run test_capsule_confinement.py . tests/test_capsule_confinement.py 19
   echo "== qualification regression (frozen Phase 1 tests vs candidate worker)"
   local S; S=$(mktemp -d); mkdir -p "$S/worker" "$S/tests"; cp worker/resolve_worker.py "$S/worker/"; ln -s "$VRC_PHASE1_ROOT/vrc" "$S/vrc"; cp "$VRC_PHASE1_ROOT"/tests/*.py "$S/tests/"
   run frozen/test_phase1.py "$S" tests/test_phase1.py 22; run frozen/test_repairs.py "$S" tests/test_repairs.py 20; rm -rf "$S"

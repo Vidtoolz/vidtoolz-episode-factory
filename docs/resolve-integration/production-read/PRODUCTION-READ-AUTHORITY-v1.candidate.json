@@ -6,9 +6,9 @@
   "approved_at": null,
   "acceptance_record": null,
   "worker_identity": {
-    "component": "resolve-control-plane production-read candidate 0.4.0 (attested isolated session)",
-    "worker_sha256": "d2a10dd521f1035e25657b96cf9d9579d10ca31aecc7d7b94310a6d080307584",
-    "commit": "branch claude/resolve-production-read-authority-20260922 (successor candidate to the REJECTED 4ae35e7c; see git)"
+    "component": "resolve-control-plane production-read candidate 0.5.0 (dedicated capsule, attested isolated session)",
+    "worker_sha256": "6799b3c05b2ebd97a2b5ff63257b9ff20f3f46dc5b02b7657887133ccef0fd71",
+    "commit": "branch claude/resolve-production-read-authority-20260922 (successor candidate to 60e8bcd8; see git)"
   },
   "facade_identity": {
     "commit": "8e068fea2d4df5b9709c387f6444502bd7bc2091",
@@ -17,6 +17,26 @@
   "host_id": "vidnux",
   "platform": "Linux",
   "session_profile_type": "ISOLATED_DISK_SESSION",
+  "execution_environment": "DEDICATED_CAPSULE_V1",
+  "host_primitive": {
+    "execution_environment": "DEDICATED_CAPSULE_V1",
+    "capsule_account": "vrc-capsule",
+    "capsule_uid": 981,
+    "capsule_gid": 981,
+    "broker_path": "/usr/local/libexec/vrc-capsule-launch",
+    "broker_sha256": "5e625202ba3063afdb4939c8c03c6d033ff089d25915fd9177d34e0e3240d3a1",
+    "runtime_root": "/usr/local/lib/vrc-capsule/resolve-runtime",
+    "runtime_manifest_sha256": "f8481df62c60485dd8cb28e9fd31881bbe65e42c1c1c169af580995c214cd9a9",
+    "resolve_binary_sha256": "124caa502547f85a2e17ad6a59269918ae561c0f82d701b9fc4e7f42127ffee7",
+    "script_lib_relpath": "libs/Fusion/fusionscript.so",
+    "script_lib_sha256": "de7d6c131a218c6c8b686693023bbc6e293333f0a4384d61e731e0707730a88a",
+    "host_boundary_schema": "vidtoolz.resolveDedicatedCapsuleHostBoundary.v1",
+    "host_review_manifest_sha256": "84f5bcbcf85e6cb7b1664b16ed1a715077a5e46c07da39c6f39304b4c6202de5"
+  },
+  "caller_identity": {
+    "operator_uid": 1000,
+    "hmac_key_id": "0000000000000000"
+  },
   "library": null,
   "projects": [],
   "operations": [
@@ -30,10 +50,13 @@
     "get_media_pool_summary",
     "get_project_fingerprint"
   ],
+  "control_operations": [
+    "session_stop"
+  ],
   "write_authority": "NONE",
   "persistent_worker_authority": "NONE",
   "external_scripting": "Local",
   "project_open_law": "read the project the human already opened; never LoadProject/OpenProject/SetCurrentProject/SetCurrentDatabase",
   "network_libraries": "DEFERRED — not authorized by v1 (EKA, nelja)",
-  "notes": "SCOPE AWAITING MIKKO SELECTION. library is null and projects is empty, status is CANDIDATE with a null approver: this record compiles ONLY with --preview into a non-live deny-all artifact that the worker refuses to serve. It authorizes nothing today. To authorize a canary after an independent review passes, Mikko sets status ACCEPTED with approved_by/approved_at and the path of his acceptance record, then names exactly ONE local Disk library (display name + canonical realpath + the root's device/inode) and at least one project UUID. worker_sha256 pins the exact candidate worker bytes; changing the worker invalidates every policy and every sealed session profile compiled from this record. v1 is structurally vidnux-only and Linux-only: PRESTO, VIDLAP2, Windows, UNC roots and network libraries (EKA, nelja) cannot be expressed in this schema at all. Reads happen only inside an isolated Resolve session CREATED BY tools/launch_isolated_session.py from a generated profile that registers exactly this one library, and the worker additionally requires that launcher\u2019s runtime attestation (fresh session nonce, exact pid and start instant, exact profile tree); Resolve is single-instance on Linux, so such a session is mutually exclusive with the operator's normal Resolve session."
+  "notes": "SCOPE AWAITING MIKKO SELECTION. library is null and projects is empty, status is CANDIDATE with a null approver: this record compiles ONLY with --preview into a non-live deny-all artifact that the worker refuses to serve. It authorizes nothing today. To authorize a canary after an independent review passes, Mikko sets status ACCEPTED with approved_by/approved_at and the path of his acceptance record, then names exactly ONE local Disk library (display name + canonical realpath + the root's device/inode), at least one project UUID, and the real hmac_key_id printed by tools/prepare_session_key.py (the placeholder zeros here name no key and every worker refuses them). worker_sha256 pins the exact candidate worker bytes; changing the worker invalidates every policy and every sealed session profile compiled from this record. v1 is structurally vidnux-only and Linux-only: PRESTO, VIDLAP2, Windows, UNC roots and network libraries (EKA, nelja) cannot be expressed in this schema at all. Reads happen only inside the APPROVED DEDICATED CAPSULE (host_primitive above, approved by independent host review on 2026-09-22): the worker and Resolve run as the vrc-capsule account out of a frozen root-owned Resolve runtime, the scripting library is loaded from that runtime and never from /opt/resolve, the library is mounted read-only, worker evidence is masked out of Resolve's mount namespace behind a seccomp filter, and the session is created by tools/launch_isolated_session.py running inside the capsule. control_operations grants the governed STOP, which is not a Resolve operation: it takes no parameters, can name no process, and ends only the attested session. Resolve is single-instance on Linux, so such a session is mutually exclusive with the operator's normal Resolve session."
 }

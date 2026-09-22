@@ -1,36 +1,292 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "vidtoolz.resolveProductionReadRuntimeAttestation.v1",
-  "description": "The ephemeral launcher's record of the isolated Resolve session it created. Written by tools/launch_isolated_session.py AFTER the profile seal and OUTSIDE the profile root, digest-pinned on the worker's command line, and re-verified at every operation. It closes coarse-timestamp ambiguity: the session nonce is generated after the seal and injected into the new process's environment, so a pre-existing process cannot carry it, and the record names the exact pid and start ticks the launcher observed. The nonce itself is never written here — only its sha256 — so the record can be read by a reviewer without becoming a credential.",
-  "type": "object", "additionalProperties": false,
-  "required": ["schema", "launcher_version", "session_id", "profile_sha256", "policy_sha256", "authority_sha256", "worker_sha256",
-               "facade_commit", "profile_root", "profile_root_dev", "profile_root_ino", "script_server_port", "nonce_sha256",
-               "executable", "launcher_pid", "spawn_pid", "resolve_pid", "resolve_start_ticks", "boot_time",
-               "clock_ticks_per_second", "created_epoch", "profile_seal_epoch", "attestation_sha256"],
-  "properties": {
-    "schema": {"const": "vidtoolz.resolveProductionReadRuntimeAttestation.v1"},
-    "launcher_version": {"type": "string", "minLength": 1},
-    "session_id": {"description": "the sealed profile's deterministic grant id", "type": "string", "pattern": "^[0-9a-f]{32}$"},
-    "profile_sha256": {"description": "sha256 of the session profile manifest FILE", "type": "string", "pattern": "^[0-9a-f]{64}$"},
-    "policy_sha256": {"description": "sha256 of the compiled policy FILE", "type": "string", "pattern": "^[0-9a-f]{64}$"},
-    "authority_sha256": {"description": "sha256 of the ACCEPTED authority record BYTES", "type": "string", "pattern": "^[0-9a-f]{64}$"},
-    "worker_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
-    "facade_commit": {"const": "8e068fea2d4df5b9709c387f6444502bd7bc2091"},
-    "profile_root": {"type": "string", "pattern": "^/[^/].*$"},
-    "profile_root_dev": {"type": "integer"},
-    "profile_root_ino": {"type": "integer"},
-    "script_server_port": {"type": "integer", "minimum": 1, "maximum": 65535},
-    "nonce_sha256": {"description": "sha256 of the session nonce that exists ONLY in the launched process's environment", "type": "string", "pattern": "^[0-9a-f]{64}$"},
-    "executable": {"type": "object", "additionalProperties": false, "required": ["realpath", "sha256", "bytes"],
-      "properties": {"realpath": {"type": "string", "pattern": "^/"}, "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "bytes": {"type": "integer", "minimum": 1}}},
-    "launcher_pid": {"type": "integer", "minimum": 1},
-    "spawn_pid": {"description": "the process the launcher spawned; the attested Resolve pid is discovered by nonce, not assumed from this", "type": "integer", "minimum": 0},
-    "resolve_pid": {"type": "integer", "minimum": 1},
-    "resolve_start_ticks": {"description": "/proc/<pid>/stat field 22; with boot_time it fixes the process instant exactly", "type": "integer", "minimum": 0},
-    "boot_time": {"description": "/proc/stat btime; a reboot invalidates the attestation", "type": "integer", "minimum": 1},
-    "clock_ticks_per_second": {"type": "integer", "minimum": 1},
-    "created_epoch": {"type": "integer", "minimum": 1},
-    "profile_seal_epoch": {"type": "integer", "minimum": 1},
-    "attestation_sha256": {"description": "sha256 of the canonical JSON of every other field", "type": "string", "pattern": "^[0-9a-f]{64}$"}
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "title": "vidtoolz.resolveProductionReadRuntimeAttestation.v1",
+ "description": "The ephemeral launcher's record of the isolated Resolve session it created. Written by tools/launch_isolated_session.py AFTER the profile seal and OUTSIDE the profile root, digest-pinned on the worker's command line, and re-verified at every operation. It closes coarse-timestamp ambiguity: the session nonce is generated after the seal and injected into the new process's environment, so a pre-existing process cannot carry it, and the record names the exact pid and start ticks the launcher observed. The nonce itself is never written here \u2014 only its sha256 \u2014 so the record can be read by a reviewer without becoming a credential.",
+ "type": "object",
+ "additionalProperties": false,
+ "required": [
+  "schema",
+  "launcher_version",
+  "session_id",
+  "profile_sha256",
+  "policy_sha256",
+  "authority_sha256",
+  "worker_sha256",
+  "facade_commit",
+  "profile_root",
+  "profile_root_dev",
+  "profile_root_ino",
+  "script_server_port",
+  "nonce_sha256",
+  "executable",
+  "launcher_pid",
+  "spawn_pid",
+  "resolve_pid",
+  "resolve_start_ticks",
+  "boot_time",
+  "clock_ticks_per_second",
+  "created_epoch",
+  "profile_seal_epoch",
+  "attestation_sha256",
+  "execution_environment",
+  "host_primitive",
+  "capsule_uid",
+  "user_ns",
+  "pid_ns",
+  "net_ns",
+  "worker_mnt_ns",
+  "resolve_mnt_ns",
+  "resolve_no_new_privs",
+  "resolve_seccomp",
+  "resolve_seccomp_filters",
+  "seccomp_filter_sha256",
+  "evidence_mask"
+ ],
+ "properties": {
+  "schema": {
+   "const": "vidtoolz.resolveProductionReadRuntimeAttestation.v1"
+  },
+  "launcher_version": {
+   "type": "string",
+   "minLength": 1
+  },
+  "session_id": {
+   "description": "the sealed profile's deterministic grant id",
+   "type": "string",
+   "pattern": "^[0-9a-f]{32}$"
+  },
+  "profile_sha256": {
+   "description": "sha256 of the session profile manifest FILE",
+   "type": "string",
+   "pattern": "^[0-9a-f]{64}$"
+  },
+  "policy_sha256": {
+   "description": "sha256 of the compiled policy FILE",
+   "type": "string",
+   "pattern": "^[0-9a-f]{64}$"
+  },
+  "authority_sha256": {
+   "description": "sha256 of the ACCEPTED authority record BYTES",
+   "type": "string",
+   "pattern": "^[0-9a-f]{64}$"
+  },
+  "worker_sha256": {
+   "type": "string",
+   "pattern": "^[0-9a-f]{64}$"
+  },
+  "facade_commit": {
+   "const": "8e068fea2d4df5b9709c387f6444502bd7bc2091"
+  },
+  "profile_root": {
+   "type": "string",
+   "pattern": "^/[^/].*$"
+  },
+  "profile_root_dev": {
+   "type": "integer"
+  },
+  "profile_root_ino": {
+   "type": "integer"
+  },
+  "script_server_port": {
+   "type": "integer",
+   "minimum": 1,
+   "maximum": 65535
+  },
+  "nonce_sha256": {
+   "description": "sha256 of the session nonce that exists ONLY in the launched process's environment",
+   "type": "string",
+   "pattern": "^[0-9a-f]{64}$"
+  },
+  "executable": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": [
+    "realpath",
+    "sha256",
+    "bytes"
+   ],
+   "properties": {
+    "realpath": {
+     "type": "string",
+     "pattern": "^/"
+    },
+    "sha256": {
+     "type": "string",
+     "pattern": "^[0-9a-f]{64}$"
+    },
+    "bytes": {
+     "type": "integer",
+     "minimum": 1
+    }
+   }
+  },
+  "launcher_pid": {
+   "type": "integer",
+   "minimum": 1
+  },
+  "spawn_pid": {
+   "description": "the process the launcher spawned; the attested Resolve pid is discovered by nonce, not assumed from this",
+   "type": "integer",
+   "minimum": 0
+  },
+  "resolve_pid": {
+   "type": "integer",
+   "minimum": 1
+  },
+  "resolve_start_ticks": {
+   "description": "/proc/<pid>/stat field 22; with boot_time it fixes the process instant exactly",
+   "type": "integer",
+   "minimum": 0
+  },
+  "boot_time": {
+   "description": "/proc/stat btime; a reboot invalidates the attestation",
+   "type": "integer",
+   "minimum": 1
+  },
+  "clock_ticks_per_second": {
+   "type": "integer",
+   "minimum": 1
+  },
+  "created_epoch": {
+   "type": "integer",
+   "minimum": 1
+  },
+  "profile_seal_epoch": {
+   "type": "integer",
+   "minimum": 1
+  },
+  "attestation_sha256": {
+   "description": "sha256 of the canonical JSON of every other field",
+   "type": "string",
+   "pattern": "^[0-9a-f]{64}$"
+  },
+  "execution_environment": {
+   "const": "DEDICATED_CAPSULE_V1"
+  },
+  "host_primitive": {
+   "description": "the APPROVED dedicated-capsule host boundary, verbatim. Independent host review approved it on 2026-09-22 (review manifest 84f5bcbc\u2026, 31/31 verified). It is not descriptive: the worker re-derives every field from the running system before a production read is served, and again at every operation.",
+   "type": "object",
+   "additionalProperties": false,
+   "required": [
+    "execution_environment",
+    "capsule_account",
+    "capsule_uid",
+    "capsule_gid",
+    "broker_path",
+    "broker_sha256",
+    "runtime_root",
+    "runtime_manifest_sha256",
+    "resolve_binary_sha256",
+    "script_lib_relpath",
+    "script_lib_sha256",
+    "host_boundary_schema",
+    "host_review_manifest_sha256"
+   ],
+   "properties": {
+    "execution_environment": {
+     "const": "DEDICATED_CAPSULE_V1"
+    },
+    "capsule_account": {
+     "description": "the dedicated account the worker and Resolve run as; the operator cannot enter it",
+     "type": "string",
+     "minLength": 1
+    },
+    "capsule_uid": {
+     "type": "integer",
+     "minimum": 1
+    },
+    "capsule_gid": {
+     "type": "integer",
+     "minimum": 1
+    },
+    "broker_path": {
+     "description": "the root-owned zero-argument broker that drops into the capsule",
+     "type": "string",
+     "pattern": "^/"
+    },
+    "broker_sha256": {
+     "type": "string",
+     "pattern": "^[0-9a-f]{64}$"
+    },
+    "runtime_root": {
+     "description": "the FROZEN ROOT-OWNED Resolve runtime. Never /opt/resolve: the operator can rewrite that one.",
+     "type": "string",
+     "pattern": "^/"
+    },
+    "runtime_manifest_sha256": {
+     "type": "string",
+     "pattern": "^[0-9a-f]{64}$"
+    },
+    "resolve_binary_sha256": {
+     "type": "string",
+     "pattern": "^[0-9a-f]{64}$"
+    },
+    "script_lib_relpath": {
+     "description": "the scripting extension, relative to runtime_root; production loads THIS file directly and never runs the vendor loader, whose fallback order ends in /opt/resolve",
+     "type": "string",
+     "minLength": 1
+    },
+    "script_lib_sha256": {
+     "type": "string",
+     "pattern": "^[0-9a-f]{64}$"
+    },
+    "host_boundary_schema": {
+     "const": "vidtoolz.resolveDedicatedCapsuleHostBoundary.v1"
+    },
+    "host_review_manifest_sha256": {
+     "type": "string",
+     "pattern": "^[0-9a-f]{64}$"
+    }
+   }
+  },
+  "capsule_uid": {
+   "type": "integer",
+   "minimum": 1
+  },
+  "user_ns": {
+   "type": "string",
+   "pattern": "^[a-z]+:\\[[0-9]+\\]$"
+  },
+  "pid_ns": {
+   "type": "string",
+   "pattern": "^[a-z]+:\\[[0-9]+\\]$"
+  },
+  "net_ns": {
+   "type": "string",
+   "pattern": "^[a-z]+:\\[[0-9]+\\]$"
+  },
+  "worker_mnt_ns": {
+   "type": "string",
+   "pattern": "^[a-z]+:\\[[0-9]+\\]$"
+  },
+  "resolve_mnt_ns": {
+   "type": "string",
+   "pattern": "^[a-z]+:\\[[0-9]+\\]$",
+   "description": "Resolve's OWN mount namespace; it must differ from worker_mnt_ns or the worker's evidence would be reachable"
+  },
+  "resolve_no_new_privs": {
+   "const": 1
+  },
+  "resolve_seccomp": {
+   "description": "SECCOMP_MODE_FILTER",
+   "const": 2
+  },
+  "resolve_seccomp_filters": {
+   "const": 1
+  },
+  "seccomp_filter_sha256": {
+   "type": "string",
+   "pattern": "^[0-9a-f]{64}$"
+  },
+  "evidence_mask": {
+   "description": "absolute worker-evidence paths the capsule init covers with an empty read-only tmpfs in Resolve's own mount namespace: the journal, the replay guard, the evidence spool and the shared key. None of them may cover the authorized library, the frozen runtime or the sealed profile.",
+   "type": "array",
+   "minItems": 1,
+   "uniqueItems": true,
+   "items": {
+    "type": "string",
+    "pattern": "^/[^/].*$"
+   }
   }
+ }
 }

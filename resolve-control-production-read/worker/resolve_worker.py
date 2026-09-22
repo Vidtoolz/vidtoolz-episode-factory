@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
-"""VIDTOOLZ Resolve worker — production-read CANDIDATE 0.4.0 (derived from frozen Phase 1 0.1.1, READ ONLY).
+"""VIDTOOLZ Resolve worker — production-read CANDIDATE 0.5.0 (derived from frozen Phase 1 0.1.1, READ ONLY).
 
 Adds an explicit read profile (--mode). QUALIFICATION_READ keeps the frozen 0.1.1 library-gate behaviour unchanged.
 PRODUCTION_READ (v1: vidnux/Linux only) authorizes reads ONLY inside an ISOLATED_DISK_SESSION: an ACCEPTED human authority is
 compiled into a digest-pinned policy, a deterministic profile registering EXACTLY ONE authorized Disk library is sealed, and the
 worker reads only a Resolve process that started AFTER that seal, under that exact profile, owned by this user, alone on the host,
-and owning the scripting endpoint — then only the allowlisted project UUID. Registration text and project UUIDs can be forged or
+and owning the scripting endpoint — then only the allowlisted project UUID. 0.5.0 binds that session to the APPROVED DEDICATED
+CAPSULE (`vrc-capsule`, uid 981): the worker and Resolve run as a dedicated account the operator cannot enter, out of a frozen
+root-owned Resolve runtime, with the scripting library pinned to that runtime (never /opt/resolve), the library mounted read-only,
+worker evidence masked out of Resolve's mount namespace, and a governed STOP that can name no process but the attested one. Registration text and project UUIDs can be forged or
 cloned, so they never establish identity on their own; session provenance does. Never opens, loads or switches a project or
 library. WRITE AUTHORITY = NONE. PERSISTENT WORKER AUTHORITY = NONE.
 
@@ -21,11 +24,11 @@ stdlib only (Python >= 3.10).
 saturation state + health outside the Resolve path (F-02), controller-path liveness
 probe (F-03), security/protocol failure journaling with lock+fsync (F-04), and the
 qualification-library gate (--require-library) demanded by v1.18 §A4."""
-import fnmatch, argparse, datetime, hashlib, hmac, json, os, platform, re, socket, subprocess, sys, threading, time, uuid
+import fnmatch, argparse, datetime, hashlib, hmac, json, os, platform, re, signal, socket, subprocess, sys, threading, time, uuid
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutTimeout
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-WORKER_VERSION = "0.4.0-production-read-attested-session-candidate"
+WORKER_VERSION = "0.5.0-production-read-dedicated-capsule-candidate"
 DERIVED_FROM = {"component": "resolve-control-plane phase1 0.1.1", "commit": "77c26103dfe88c448267a9c1efe7f34a20a39375", "worker_sha256": "371caf131e5d21cdb8b5f3e505934154b7ee835427d25d9683d51013d345f4b3"}
 READ_PROFILES = ("QUALIFICATION_READ", "PRODUCTION_READ")
 POLICY_SCHEMA = "vidtoolz.resolveProductionReadRuntimePolicy.v1"
@@ -49,8 +52,32 @@ MAX_BODY = 1 << 20
 POOL_CAPACITY = 4
 HEALTH_PROBE_S = 3.0
 PROHIBITED_LIBRARIES = ("EKA", "EKA192.168.50.199", "nelja", "Local Database")   # v1.18 TARGET-CONTRACT#library.prohibited_library_names
+# ---- the dedicated capsule host boundary, approved by independent host review on 2026-09-22 (31/31). These are not description:
+# every one is re-derived from the running system before a production read is served, and again at every operation.
+EXECUTION_ENVIRONMENTS = ("DEDICATED_CAPSULE_V1",)      # the isolated-session-only environment of 0.4.0 carried the launch-time
+                                                        # profile-rollback P1 and is no longer authorizable
+CAPSULE_MODE = "DEDICATED_CAPSULE_V1"
+CAPSULE_ACCOUNT, CAPSULE_UID, CAPSULE_GID, CAPSULE_NOLOGIN = "vrc-capsule", 981, 981, "/usr/sbin/nologin"
+BROKER_PATH = "/usr/local/libexec/vrc-capsule-launch"
+BROKER_SHA256 = "5e625202ba3063afdb4939c8c03c6d033ff089d25915fd9177d34e0e3240d3a1"
+RUNTIME_ROOT = "/usr/local/lib/vrc-capsule/resolve-runtime"
+RUNTIME_MANIFEST = "RUNTIME-MANIFEST.sha256"
+RUNTIME_MANIFEST_SHA256 = "f8481df62c60485dd8cb28e9fd31881bbe65e42c1c1c169af580995c214cd9a9"
+RESOLVE_BINARY_REL = "bin/resolve"
+RESOLVE_BINARY_SHA256 = "124caa502547f85a2e17ad6a59269918ae561c0f82d701b9fc4e7f42127ffee7"
+SCRIPT_LIB_REL = "libs/Fusion/fusionscript.so"
+SCRIPT_LIB_SHA256 = "de7d6c131a218c6c8b686693023bbc6e293333f0a4384d61e731e0707730a88a"
+HOST_BOUNDARY_SCHEMA = "vidtoolz.resolveDedicatedCapsuleHostBoundary.v1"
+HOST_REVIEW_MANIFEST_SHA256 = "84f5bcbcf85e6cb7b1664b16ed1a715077a5e46c07da39c6f39304b4c6202de5"
+MUTABLE_RESOLVE_ROOT = "/opt/resolve"    # the operator's own installation: readable, rewritable by the operator, never executed or imported by a production read
+SCRIPT_ENV_REFUSED = ("RESOLVE_SCRIPT_API", "RESOLVE_SCRIPT_LIB", "PYTHONPATH", "PYTHONHOME", "PYTHONSTARTUP",
+                      "LD_PRELOAD", "LD_LIBRARY_PATH", "LD_AUDIT")
 READ_ONLY_OPS = ("health", "identify", "get_current_project", "get_current_timeline", "list_timelines",
                  "get_project_settings", "get_timeline_settings", "get_media_pool_summary", "get_project_fingerprint")
+# The governed STOP is the only non-read operation, and it is not a Resolve operation at all: it never attaches, never calls the
+# scripting API, takes no parameters and can name no process — it ends the ONE session the launcher attested. The accepted authority
+# must grant it explicitly (control_operations), and the accepted facade does not expose it.
+CONTROL_OPS = ("session_stop",)
 # Names refused BEFORE any Resolve call. Kept as data so tests can prove the gate.
 FORBIDDEN_OPS = ("AppendToTimeline", "AddItemListToMediaPool", "ImportMedia", "CreateTimeline", "DeleteTimeline",
                  "SetCurrentTimeline", "SetSetting", "AddMarker", "DeleteMarker", "SaveProject", "SetName", "Quit",
@@ -127,7 +154,7 @@ def _lit(v):
 def _abs_local_dir(v):
     return _lit(v) and v.startswith("/") and not v.startswith("//") and not any(s in ("", ".", "..") for s in v.split("/")[1:])
 
-def validate_authority_record(rec):
+def validate_authority_record(rec, pins=None):
     """Closed-schema validation of the SOURCE record, performed by the worker itself (RRR-F02: the worker previously trusted the
     compiler's validation and could consume a hand-made source/policy pair). Mirrors schemas/resolveProductionReadAuthority.v1."""
     def obj(o, allowed, required, where):
@@ -135,10 +162,12 @@ def validate_authority_record(rec):
         if set(o) - set(allowed): _refuse("AUTHORITY_INVALID", f"{where} has unknown field(s) {sorted(set(o) - set(allowed))}")
         if set(required) - set(o): _refuse("AUTHORITY_INVALID", f"{where} is missing {sorted(set(required) - set(o))}")
     obj(rec, ("schema", "authority_id", "status", "approved_by", "approved_at", "acceptance_record", "worker_identity", "facade_identity",
-              "host_id", "platform", "session_profile_type", "library", "projects", "operations", "write_authority",
+              "host_id", "platform", "session_profile_type", "execution_environment", "host_primitive", "caller_identity", "library",
+              "projects", "operations", "control_operations", "write_authority",
               "persistent_worker_authority", "external_scripting", "project_open_law", "network_libraries", "notes"),
         ("schema", "authority_id", "status", "approved_by", "worker_identity", "facade_identity", "host_id", "platform",
-         "session_profile_type", "library", "projects", "operations", "write_authority", "persistent_worker_authority",
+         "session_profile_type", "execution_environment", "host_primitive", "caller_identity", "library", "projects", "operations",
+         "control_operations", "write_authority", "persistent_worker_authority",
          "external_scripting", "project_open_law"), "authority record")
     if rec["schema"] != AUTHORITY_SCHEMA: _refuse("AUTHORITY_INVALID", "authority record has the wrong schema")
     if not _lit(rec["authority_id"]): _refuse("AUTHORITY_INVALID", "authority_id must be a literal string")
@@ -146,6 +175,19 @@ def validate_authority_record(rec):
     if rec["host_id"] not in PRODUCTION_HOSTS: _refuse("AUTHORITY_INVALID", f"host {rec['host_id']!r} is not a supported production-read host (v1: vidnux only)")
     if rec["platform"] != PRODUCTION_PLATFORM: _refuse("AUTHORITY_INVALID", "v1 supports Linux only; Windows production reads are structurally unsupported")
     if rec["session_profile_type"] != SESSION_PROFILE_TYPE: _refuse("AUTHORITY_INVALID", "only the isolated Disk session profile type is supported")
+    if rec["execution_environment"] not in EXECUTION_ENVIRONMENTS:
+        _refuse("AUTHORITY_INVALID", f"execution environment {rec['execution_environment']!r} is not authorizable (only the approved dedicated capsule is)")
+    validate_host_primitive(rec["host_primitive"], "authority record", pins)
+    if rec["host_primitive"]["execution_environment"] != rec["execution_environment"]:
+        _refuse("AUTHORITY_INVALID", "the host_primitive block names a different execution environment than the record")
+    ci = rec["caller_identity"]; obj(ci, ("operator_uid", "hmac_key_id", "key_path"), ("operator_uid", "hmac_key_id"), "caller_identity")
+    if not isinstance(ci["operator_uid"], int) or isinstance(ci["operator_uid"], bool) or ci["operator_uid"] < 1000:
+        _refuse("AUTHORITY_INVALID", "caller_identity.operator_uid must be a real unprivileged operator uid")
+    if ci["operator_uid"] == rec["host_primitive"]["capsule_uid"]:
+        _refuse("AUTHORITY_INVALID", "the caller and the capsule may not be the same account; the boundary would be nominal")
+    if not (isinstance(ci["hmac_key_id"], str) and re.fullmatch(r"[0-9a-f]{16}", ci["hmac_key_id"])):
+        _refuse("AUTHORITY_INVALID", "caller_identity.hmac_key_id must be a 16-hex key identity")
+    if "key_path" in ci and not _abs_local_dir(ci["key_path"]): _refuse("AUTHORITY_INVALID", "caller_identity.key_path must be an absolute local path")
     w = rec["worker_identity"]; obj(w, ("component", "worker_sha256", "commit"), ("component", "worker_sha256"), "worker_identity")
     if not (isinstance(w["worker_sha256"], str) and re.fullmatch(r"[0-9a-f]{64}", w["worker_sha256"])): _refuse("AUTHORITY_INVALID", "worker_identity.worker_sha256 must be a sha256")
     f = rec["facade_identity"]; obj(f, ("commit", "tree"), ("commit",), "facade_identity")
@@ -164,24 +206,271 @@ def validate_authority_record(rec):
         if p["project_uuid"] in seen: _refuse("AUTHORITY_INVALID", "duplicate project_uuid")
         seen.add(p["project_uuid"])
     if sorted(rec["operations"]) != sorted(READ_ONLY_OPS): _refuse("AUTHORITY_INVALID", "operations must be exactly the nine read operations")
+    if sorted(rec["control_operations"]) != sorted(CONTROL_OPS): _refuse("AUTHORITY_INVALID", "control_operations must be exactly the governed stop")
     if rec["write_authority"] != "NONE" or rec["persistent_worker_authority"] != "NONE" or rec["external_scripting"] != "Local":
         _refuse("AUTHORITY_INVALID", "authority does not retain NONE/NONE/Local boundaries")
     if rec["project_open_law"] != PROJECT_OPEN_LAW: _refuse("AUTHORITY_INVALID", "project_open_law text is not the governed law")
     if "network_libraries" in rec and rec["network_libraries"] != NETWORK_LIBRARIES_TEXT: _refuse("AUTHORITY_INVALID", "network_libraries text is not the governed v1 text")
     return rec
 
-def verify_accepted_authority(raw):
+def verify_accepted_authority(raw, pins=None):
     """Acceptance is semantic, never mere existence (PRR-F01). Returns the validated, ACCEPTED record."""
     try: rec = json.loads(raw)
     except ValueError: _refuse("AUTHORITY_INVALID", "authority record is not valid JSON")
-    validate_authority_record(rec)
+    validate_authority_record(rec, pins)
     if rec["status"] != "ACCEPTED": _refuse("AUTHORITY_NOT_ACCEPTED", f"authority status is {rec['status']!r}, not ACCEPTED (a candidate never authorizes)")
     if rec["approved_by"] not in APPROVERS: _refuse("AUTHORITY_NOT_ACCEPTED", "authority record has no valid human approver")
     if not _iso_date(rec.get("approved_at")): _refuse("AUTHORITY_NOT_ACCEPTED", "authority record has no real calendar approval date")
     if not (isinstance(rec.get("acceptance_record"), str) and rec["acceptance_record"].strip()): _refuse("AUTHORITY_NOT_ACCEPTED", "authority record names no acceptance record")
     return rec
 
-def load_production_policy(path, expected_sha256, authority_path, host_id, own_sha256):
+# ---------------------------------------------------------------- DEDICATED_CAPSULE_V1: the approved host primitive
+# Independent host review approved this boundary on 2026-09-22 (review manifest sha256 84f5bcbc…, 31/31 verified). The worker does not
+# take it on trust from a policy: every pin below is re-derived from the running system before a production read is served, and again at
+# every operation. A drift in the account, the broker bytes, the frozen Resolve runtime or the read-only library mount refuses.
+def _capsule_pins(src):
+    """The host-primitive block as the authority/policy/profile carry it, normalized for comparison."""
+    return {k: src.get(k) for k in ("execution_environment", "capsule_account", "capsule_uid", "capsule_gid", "broker_path",
+                                    "broker_sha256", "runtime_root", "runtime_manifest_sha256", "resolve_binary_sha256",
+                                    "script_lib_relpath", "script_lib_sha256", "host_boundary_schema", "host_review_manifest_sha256")}
+
+CAPSULE_PINS = {"execution_environment": "DEDICATED_CAPSULE_V1", "capsule_account": CAPSULE_ACCOUNT, "capsule_uid": CAPSULE_UID,
+                "capsule_gid": CAPSULE_GID, "broker_path": BROKER_PATH, "broker_sha256": BROKER_SHA256, "runtime_root": RUNTIME_ROOT,
+                "runtime_manifest_sha256": RUNTIME_MANIFEST_SHA256, "resolve_binary_sha256": RESOLVE_BINARY_SHA256,
+                "script_lib_relpath": SCRIPT_LIB_REL, "script_lib_sha256": SCRIPT_LIB_SHA256,
+                "host_boundary_schema": HOST_BOUNDARY_SCHEMA, "host_review_manifest_sha256": HOST_REVIEW_MANIFEST_SHA256}
+
+def validate_host_primitive(hp, where, pins=None):
+    """Closed schema. The block must be EXACTLY the approved boundary: this worker is authored for one capsule, and a record naming a
+    different account, broker, runtime or host review is not 'a different deployment', it is unusable here.
+
+    `pins` is a TEST SEAM of the same kind as `SystemProbe`: offline suites build a synthetic capsule and hand it in explicitly. It is
+    reachable by constructor/parameter injection only — main() never passes one, and there is no environment switch. A record naming a
+    synthetic boundary therefore still refuses against a production worker, which is the property that matters."""
+    pins = pins or CAPSULE_PINS
+    if not isinstance(hp, dict): _refuse("HOST_PRIMITIVE_INVALID", f"{where} carries no host_primitive block")
+    if set(hp) != set(pins): _refuse("HOST_PRIMITIVE_INVALID", f"{where} host_primitive fields are not the approved set",
+                                     unexpected=sorted(set(hp) - set(pins)), missing=sorted(set(pins) - set(hp)))
+    for k, want in pins.items():
+        if hp[k] != want: _refuse("HOST_PRIMITIVE_MISMATCH", f"{where} host_primitive.{k} is not the approved dedicated-capsule boundary",
+                                  field=k, expected=want, actual=hp[k])
+    return hp
+
+def _cached_digest(probe, path, st, cache):
+    """sha256 keyed by the inode's full identity — device, inode, size, mtime and ctime. An in-place rewrite always bumps ctime, and
+    these files are root-owned, so the capsule account cannot produce a collision in the key; a changed key always re-hashes."""
+    key = (path, st["dev"], st["ino"], st["bytes"], st["mtime_ns"], st["ctime_ns"])
+    if isinstance(cache, dict) and key in cache: return cache[key]
+    digest = probe.hash_file(path)
+    if isinstance(cache, dict) and digest is not None:
+        if len(cache) > 32: cache.clear()
+        cache[key] = digest
+    return digest
+
+def verify_host_primitive(pins, probe=None, cache=None):
+    """The approved host boundary, re-derived from the running system."""
+    probe = probe or SystemProbe()
+    acct = probe.account(pins["capsule_account"])
+    if not acct: _refuse("HOST_PRIMITIVE_MISSING", "the approved capsule account does not exist on this host", account=pins["capsule_account"])
+    uid, gid, shell = acct["uid"], acct["gid"], acct["shell"]
+    if (uid, gid) != (pins["capsule_uid"], pins["capsule_gid"]):
+        _refuse("HOST_PRIMITIVE_MISMATCH", "the capsule account is not the approved identity", expected=[pins["capsule_uid"], pins["capsule_gid"]], actual=[uid, gid])
+    if shell != CAPSULE_NOLOGIN: _refuse("HOST_PRIMITIVE_MISMATCH", "the capsule account has an interactive shell", shell=shell)
+    st = probe.stat_file(pins["broker_path"])
+    if not st or st["realpath"] != pins["broker_path"]: _refuse("HOST_PRIMITIVE_MISSING", "the approved broker is missing or moved", path=pins["broker_path"])
+    if st["uid"] != 0: _refuse("HOST_PRIMITIVE_MISMATCH", "the broker is not root-owned", uid=st["uid"])
+    bdigest = _cached_digest(probe, pins["broker_path"], st, cache)
+    if bdigest != pins["broker_sha256"]: _refuse("HOST_PRIMITIVE_MISMATCH", "the broker bytes differ from the approved host boundary", expected=pins["broker_sha256"], actual=bdigest)
+    root = pins["runtime_root"]
+    if root == MUTABLE_RESOLVE_ROOT or root.startswith(MUTABLE_RESOLVE_ROOT + "/"):
+        _refuse("HOST_PRIMITIVE_MISMATCH", "the capsule runtime may never be the operator's mutable Resolve installation", path=root)
+    phys = resolve_physical_root(root)
+    if phys["realpath"] != root: _refuse("HOST_PRIMITIVE_MISMATCH", "the capsule runtime root is not canonical", path=root, actual=phys["realpath"])
+    rst = probe.stat_file(root)
+    if not rst or rst["uid"] != 0: _refuse("HOST_PRIMITIVE_MISMATCH", "the capsule runtime root is not root-owned", path=root)
+    out = {"account": pins["capsule_account"], "capsule_uid": uid, "capsule_gid": gid, "broker_sha256": bdigest, "runtime_root": root}
+    for rel, want, field in ((RESOLVE_BINARY_REL, pins["resolve_binary_sha256"], "resolve_binary_sha256"),
+                             (RUNTIME_MANIFEST, pins["runtime_manifest_sha256"], "runtime_manifest_sha256"),
+                             (pins["script_lib_relpath"], pins["script_lib_sha256"], "script_lib_sha256")):
+        full = os.path.join(root, rel)
+        fst = probe.stat_file(full)
+        if not fst: _refuse("HOST_PRIMITIVE_MISSING", "an approved capsule runtime member is missing", member=rel)
+        if fst["realpath"] != full: _refuse("HOST_PRIMITIVE_MISMATCH", "a capsule runtime member is a link out of the runtime", member=rel, actual=fst["realpath"])
+        if fst["uid"] != 0: _refuse("HOST_PRIMITIVE_MISMATCH", "a capsule runtime member is not root-owned", member=rel, uid=fst["uid"])
+        got = _cached_digest(probe, full, fst, cache)
+        if got != want: _refuse("HOST_PRIMITIVE_MISMATCH", "a capsule runtime member differs from the approved runtime", member=rel, expected=want, actual=got)
+        out[field] = got
+    if _manifest_digest(root, pins["script_lib_relpath"]) != pins["script_lib_sha256"]:
+        _refuse("HOST_PRIMITIVE_MISMATCH", "the frozen runtime manifest does not record the pinned scripting library digest", member=pins["script_lib_relpath"])
+    out["host_review_manifest_sha256"] = pins["host_review_manifest_sha256"]
+    return out
+
+def _manifest_digest(root, rel):
+    """The digest the frozen root-owned runtime manifest records for one member (sha256sum format)."""
+    try:
+        with open(os.path.join(root, RUNTIME_MANIFEST), "r", errors="replace") as fh:
+            for line in fh:
+                d, sep, name = line.partition("  ")
+                if sep and name.strip() == rel: return d.strip()
+    except OSError: return None
+    return None
+
+# ---- the pinned scripting runtime (mandatory repair: the vendor loader's /opt/resolve fallback is never reachable here)
+def load_capsule_api(pins, probe=None):
+    """Load the Resolve scripting module ONLY from the frozen root-owned capsule runtime.
+
+    The vendor loader (`Developer/Scripting/Modules/DaVinciResolveScript.py`) tries, in order: a bare `import fusionscript` off
+    `sys.path`, then `$RESOLVE_SCRIPT_LIB`, then a hardcoded `/opt/resolve/libs/Fusion/`. Every one of those can resolve to bytes the
+    operator account may rewrite, so production mode does not use that loader at all: it loads the pinned extension itself, after
+    proving the file is inside the approved runtime, root-owned, and equal to the digest the frozen runtime manifest records.
+    """
+    probe = probe or SystemProbe()
+    bad = sorted(k for k in os.environ if k.upper().startswith("VRC_FAKE") or k.upper() in ("RESOLVE_FAKE_API", "VRC_TEST_API"))
+    if bad: raise SystemExit("REFUSED: test substitution variables present in production environment: " + ",".join(bad))
+    present = sorted(k for k in SCRIPT_ENV_REFUSED if os.environ.get(k))
+    if present: raise SystemExit("REFUSED: the production scripting path is constructed, never inherited; unset: " + ",".join(present))
+    for name in ("fusionscript", "DaVinciResolveScript"):
+        if name in sys.modules: raise SystemExit("REFUSED: %s was already imported before the pinned loader ran" % name)
+    root = pins["runtime_root"]
+    lib = os.path.join(root, pins["script_lib_relpath"])
+    try: real = os.path.realpath(lib, strict=True)
+    except (OSError, ValueError) as e: raise SystemExit("REFUSED: pinned scripting library unavailable (%s)" % type(e).__name__)
+    if real != lib or not real.startswith(root + "/"):
+        raise SystemExit("REFUSED: the scripting library resolves outside the approved runtime: %s" % real)
+    if real == MUTABLE_RESOLVE_ROOT or real.startswith(MUTABLE_RESOLVE_ROOT + "/"):
+        raise SystemExit("REFUSED: the scripting library resolves into the operator's mutable Resolve installation")
+    st = probe.stat_file(real)
+    if not st or st["uid"] != 0: raise SystemExit("REFUSED: the pinned scripting library is not root-owned")
+    got = probe.hash_file(real)
+    if got != pins["script_lib_sha256"] or _manifest_digest(root, pins["script_lib_relpath"]) != pins["script_lib_sha256"]:
+        raise SystemExit("REFUSED: the pinned scripting library does not match the approved runtime manifest")
+    import importlib.machinery, importlib.util
+    loader = importlib.machinery.ExtensionFileLoader("fusionscript", real)
+    spec = importlib.util.spec_from_loader("fusionscript", loader)
+    module = importlib.util.module_from_spec(spec)
+    loader.exec_module(module)
+    verify_loaded_from(real, getattr(module, "__file__", None))
+    return module
+
+def verify_loaded_from(expected, module_file, maps="/proc/self/maps"):
+    """After the extension is loaded, its mapping must come from the approved runtime, and NOTHING in this process may be mapped out of
+    the operator's mutable Resolve installation."""
+    if module_file and os.path.realpath(module_file) != expected:
+        raise SystemExit("REFUSED: the loaded scripting module reports another origin: %s" % module_file)
+    try: rows = open(maps).read().splitlines()
+    except OSError: raise SystemExit("REFUSED: cannot read the process map to confirm the scripting library origin")
+    mapped = set()
+    for r in rows:
+        p = r.split()
+        if len(p) >= 6 and p[-1].startswith("/"): mapped.add(p[-1])
+    if expected not in mapped: raise SystemExit("REFUSED: the loaded scripting library is not mapped from %s" % expected)
+    intruders = sorted(p for p in mapped if p == MUTABLE_RESOLVE_ROOT or p.startswith(MUTABLE_RESOLVE_ROOT + "/"))
+    if intruders: raise SystemExit("REFUSED: %d mapping(s) come from the mutable Resolve installation: %s" % (len(intruders), intruders[:3]))
+    return True
+
+# ---- cross-user HMAC key placement (Hermes runs as the operator, the worker runs as the capsule account)
+def verify_secret_placement(path, secret, pins, probe=None, self_uid=None):
+    """The shared HMAC key is the ONE artifact both sides of the boundary touch. It must be owned by the operator, readable but NEVER
+    writable by the capsule, and it must be the key identity the accepted authority names. A key the capsule could rewrite would let a
+    compromised capsule mint its own caller."""
+    probe = probe or SystemProbe()
+    uid = probe.uid() if self_uid is None else self_uid
+    st = probe.stat_file(path)
+    if not st: _refuse("SECRET_PLACEMENT_INVALID", "the shared HMAC key is unavailable", path=path)
+    if st["uid"] == uid: _refuse("SECRET_PLACEMENT_INVALID", "the shared HMAC key is owned by the capsule account; the operator must own it so the capsule cannot rotate it", path=path, uid=st["uid"])
+    if st["uid"] != pins["operator_uid"]: _refuse("SECRET_PLACEMENT_INVALID", "the shared HMAC key is not owned by the authorized operator account", expected=pins["operator_uid"], actual=st["uid"])
+    if probe.writable(path): _refuse("SECRET_PLACEMENT_INVALID", "the shared HMAC key is writable by the capsule account", path=path)
+    if len(secret) < 32: _refuse("SECRET_PLACEMENT_INVALID", "the shared HMAC key is too short")
+    kid = sha(secret)[:16]
+    if kid != pins["hmac_key_id"]: _refuse("HMAC_KEY_IDENTITY_MISMATCH", "the shared HMAC key is not the key identity the accepted authority names", expected=pins["hmac_key_id"], actual=kid)
+    return {"path": path, "owner_uid": st["uid"], "hmac_key_id": kid, "capsule_writable": False}
+
+# ---------------------------------------------------------------- capsule process laws (real /proc facts, no inference)
+SECCOMP_MODE_FILTER = 2
+ST_RDONLY = 1
+
+def _mount_for(path, mounts):
+    """The mount entry governing a path: the longest mount point that is a prefix of it."""
+    best = None
+    for m in mounts:
+        mp = m["mount_point"]
+        if path == mp or path.startswith(mp.rstrip("/") + "/"):
+            if best is None or len(mp) > len(best["mount_point"]): best = m
+    return best
+
+def verify_readonly_mount(path, mounts, reason, what, probe=None, statvfs=True):
+    """A production read never needs write access to the library, and the capsule gives it none: the covering mount must carry `ro`
+    and the filesystem must report ST_RDONLY. Both are checked — a bind can be remounted rw without the superblock changing."""
+    m = _mount_for(path, mounts)
+    if not m: _refuse(reason, f"no mount covers the {what}", path=path)
+    if "ro" not in m["options"].split(","): _refuse(reason, f"the {what} is not mounted read-only", path=path, mount_point=m["mount_point"], options=m["options"])
+    if statvfs:
+        probe = probe or SystemProbe()
+        flag = probe.statvfs_flag(path)
+        if flag is None: _refuse(reason, f"the {what} filesystem state is unreadable", path=path)
+        if not flag & ST_RDONLY: _refuse(reason, f"the {what} filesystem does not report read-only", path=path)
+    return m
+
+def attest_capsule_process(probe, gov, prov, att, pid, self_pid=None):
+    """The dedicated-capsule laws, all of them observable in /proc:
+
+    * the worker and Resolve are the SAME capsule account, inside the SAME user, pid and network namespaces;
+    * Resolve runs in its OWN mount namespace, where every worker-evidence path is masked by a read-only tmpfs it cannot remove;
+    * Resolve holds NO capabilities, cannot regain any (`NoNewPrivs`), and runs under a seccomp FILTER — the filter is what makes the
+      mask durable, because `mount`, `umount2`, `unshare`, `setns` and the new mount API are refused to it;
+    * the authorized library is mounted read-only in both namespaces;
+    * the running Resolve is the frozen root-owned runtime binary, by path containment as well as by digest.
+    """
+    self_pid = self_pid or os.getpid()
+    hp = gov["host_primitive"]
+    if probe.uid() != hp["capsule_uid"]:
+        _refuse("CAPSULE_IDENTITY_MISMATCH", "the worker is not running as the approved capsule account", expected=hp["capsule_uid"], actual=probe.uid())
+    if probe.proc_uid(pid) != hp["capsule_uid"]:
+        _refuse("CAPSULE_IDENTITY_MISMATCH", "the Resolve process is not the approved capsule account", expected=hp["capsule_uid"], actual=probe.proc_uid(pid))
+    ns_self = {k: probe.ns(self_pid, k) for k in ("user", "pid", "net", "mnt")}
+    ns_res = {k: probe.ns(pid, k) for k in ("user", "pid", "net", "mnt")}
+    if any(v is None for v in ns_self.values()) or any(v is None for v in ns_res.values()):
+        _refuse("CAPSULE_NAMESPACE_UNREADABLE", "capsule namespace identity is unreadable; the session cannot be attested", pid=pid)
+    for k in ("user", "pid", "net"):
+        if ns_self[k] != ns_res[k]:
+            _refuse("CAPSULE_NAMESPACE_MISMATCH", f"the Resolve process is not inside this worker's capsule {k} namespace", namespace=k, worker=ns_self[k], resolve=ns_res[k])
+    if ns_self["mnt"] == ns_res["mnt"]:
+        _refuse("CAPSULE_EVIDENCE_EXPOSED", "the Resolve process shares the worker's mount namespace; worker evidence would be reachable", namespace=ns_res["mnt"])
+    for field, want in (("user_ns", ns_self["user"]), ("pid_ns", ns_self["pid"]), ("net_ns", ns_self["net"]),
+                        ("resolve_mnt_ns", ns_res["mnt"]), ("worker_mnt_ns", ns_self["mnt"])):
+        if att.get(field) != want:
+            _refuse("SESSION_NOT_ATTESTED", "the capsule namespaces are not the ones the launcher attested", field=field, attested=att.get(field), actual=want)
+    st = probe.status_fields(pid)
+    if st is None: _refuse("SESSION_PROCESS_UNREADABLE", "the Resolve process status is unreadable", pid=pid)
+    if st.get("NoNewPrivs") != 1: _refuse("CAPSULE_CONFINEMENT_MISSING", "the Resolve process can still gain privileges (NoNewPrivs is not set)", pid=pid)
+    if st.get("Seccomp") != SECCOMP_MODE_FILTER:
+        _refuse("CAPSULE_CONFINEMENT_MISSING", "the Resolve process does not run under a seccomp filter; the evidence mask would be removable", pid=pid, seccomp=st.get("Seccomp"))
+    for cap in ("CapBnd", "CapEff", "CapPrm", "CapInh", "CapAmb"):
+        if st.get(cap): _refuse("CAPSULE_CONFINEMENT_MISSING", "the Resolve process holds capabilities", pid=pid, capability_set=cap, value=st.get(cap))
+    if st.get("Seccomp_filters") is not None and st["Seccomp_filters"] != gov["confinement"]["seccomp_filters"]:
+        _refuse("CAPSULE_CONFINEMENT_MISSING", "the Resolve process carries a different number of seccomp filters than the seal allows",
+                sealed=gov["confinement"]["seccomp_filters"], actual=st["Seccomp_filters"])
+    wmounts, rmounts = probe.mountinfo(self_pid), probe.mountinfo(pid)
+    if wmounts is None or rmounts is None: _refuse("CAPSULE_NAMESPACE_UNREADABLE", "capsule mount tables are unreadable", pid=pid)
+    for masked in gov["evidence_mask"]:
+        m = _mount_for(masked, rmounts)
+        if not m or m["mount_point"] != masked or m["fstype"] != "tmpfs" or "ro" not in m["options"].split(","):
+            _refuse("CAPSULE_EVIDENCE_EXPOSED", "a worker-evidence path is not masked by a read-only tmpfs in the Resolve mount namespace",
+                    path=masked, observed=(m or {}).get("fstype"), mount_point=(m or {}).get("mount_point"))
+        w = _mount_for(masked, wmounts)
+        if w and w["mount_point"] == masked and w["fstype"] == "tmpfs":
+            _refuse("CAPSULE_EVIDENCE_MASKED_FOR_WORKER", "the worker's own evidence path is masked; it could not write an authorization record", path=masked)
+    verify_readonly_mount(gov["library"]["canonical_root"], wmounts, "LIBRARY_MOUNT_NOT_READONLY", "authorized library", probe)
+    verify_readonly_mount(gov["library"]["canonical_root"], rmounts, "LIBRARY_MOUNT_NOT_READONLY", "authorized library in the Resolve namespace", probe, statvfs=False)
+    verify_readonly_mount(hp["runtime_root"], wmounts, "RUNTIME_MOUNT_NOT_READONLY", "frozen capsule runtime", probe)
+    exe = gov["resolve_binary"]["realpath"]
+    if exe != os.path.join(hp["runtime_root"], RESOLVE_BINARY_REL):
+        _refuse("SESSION_EXECUTABLE_MISMATCH", "the sealed Resolve executable is not the frozen capsule runtime binary", expected=os.path.join(hp["runtime_root"], RESOLVE_BINARY_REL), actual=exe)
+    return {"capsule_uid": hp["capsule_uid"], "user_ns": ns_self["user"], "net_ns": ns_self["net"],
+            "worker_mnt_ns": ns_self["mnt"], "resolve_mnt_ns": ns_res["mnt"], "seccomp": st.get("Seccomp"),
+            "no_new_privs": st.get("NoNewPrivs"), "capabilities": 0, "evidence_masked": list(gov["evidence_mask"])}
+
+def load_production_policy(path, expected_sha256, authority_path, host_id, own_sha256, pins=None):
     """Policy + accepted authority, re-read and re-verified at EVERY operation. Nothing self-declared is trusted: the source record's
     BYTES are hashed here, its semantics revalidated, and the policy's grant must be a subset of the accepted grant on the FULL physical
     tuple (kind, name, canonical_root, dev, ino, projects) — RRR-F02."""
@@ -197,7 +486,7 @@ def load_production_policy(path, expected_sha256, authority_path, host_id, own_s
     try: araw = open(authority_path, "rb").read()
     except OSError as e: _refuse("AUTHORITY_MISSING", "accepted authority record unavailable", cause=type(e).__name__)
     if sha(araw) != pol.get("source_record_sha256"): _refuse("AUTHORITY_SOURCE_MISMATCH", "authority bytes do not match the digest the policy was compiled from", expected=pol.get("source_record_sha256"), actual=sha(araw))
-    rec = verify_accepted_authority(araw)
+    rec = verify_accepted_authority(araw, pins)
     if pol.get("worker_sha256") != own_sha256 or rec["worker_identity"]["worker_sha256"] != own_sha256:
         _refuse("WORKER_IDENTITY_MISMATCH", "policy/authority are not for this worker's bytes", expected=own_sha256, policy=pol.get("worker_sha256"))
     if pol.get("facade_commit") != ACCEPTED_FACADE_COMMIT or rec["facade_identity"]["commit"] != ACCEPTED_FACADE_COMMIT:
@@ -206,6 +495,12 @@ def load_production_policy(path, expected_sha256, authority_path, host_id, own_s
     if pol.get("host_id") != host_id or host_id not in PRODUCTION_HOSTS: _refuse("HOST_NOT_AUTHORIZED", "policy does not grant this host", host=host_id, policy_host=pol.get("host_id"))
     if pol.get("host_id") != rec["host_id"]: _refuse("AUTHORITY_SOURCE_MISMATCH", "policy host differs from the accepted authority host")
     if pol.get("platform") != PRODUCTION_PLATFORM or pol.get("session_profile_type") != SESSION_PROFILE_TYPE: _refuse("PRODUCTION_POLICY_INVALID", "policy platform/session type is not the supported isolated Linux Disk session")
+    if pol.get("execution_environment") != rec["execution_environment"] or pol["execution_environment"] not in EXECUTION_ENVIRONMENTS:
+        _refuse("PRODUCTION_POLICY_INVALID", "policy does not compile the accepted dedicated-capsule execution environment", policy=pol.get("execution_environment"))
+    validate_host_primitive(pol.get("host_primitive"), "policy", pins)
+    if pol["host_primitive"] != rec["host_primitive"]: _refuse("AUTHORITY_SOURCE_MISMATCH", "policy host_primitive differs from the accepted authority")
+    if pol.get("caller_identity") != rec["caller_identity"]: _refuse("AUTHORITY_SOURCE_MISMATCH", "policy caller_identity differs from the accepted authority")
+    if sorted(pol.get("control_operations") or []) != sorted(CONTROL_OPS): _refuse("PRODUCTION_POLICY_INVALID", "policy control_operations are not exactly the governed stop")
     plib, alib = pol.get("library"), rec["library"]
     if not isinstance(plib, dict): _refuse("PRODUCTION_POLICY_INVALID", "policy carries no library grant")
     for k in ("kind", "name", "canonical_root", "physical_dev", "physical_ino"):
@@ -223,7 +518,7 @@ def load_production_policy(path, expected_sha256, authority_path, host_id, own_s
 NONCE_ENV_KEY = "VRC_SESSION_NONCE"                 # launcher-generated, post-seal, unpredictable: a pre-existing process cannot carry it
 ATTESTATION_SCHEMA = "vidtoolz.resolveProductionReadRuntimeAttestation.v1"
 
-def load_session_profile(path, expected_sha256, policy, policy_sha256, authority_sha256, own_sha256, host_id):
+def load_session_profile(path, expected_sha256, policy, policy_sha256, authority_sha256, own_sha256, host_id, pins=None):
     """The sealed profile is the link between the accepted policy and a concrete Resolve session: it names the profile directory the
     session must be launched with, the exact one-library registration, the EXACT tree that directory may contain, the physical identity
     of the root and the seal instant the process must postdate. Governed content is deterministic and separately digested; runtime
@@ -243,6 +538,27 @@ def load_session_profile(path, expected_sha256, policy, policy_sha256, authority
     if gov.get("policy_sha256") != policy_sha256: _refuse("SESSION_PROFILE_MISMATCH", "session profile was generated from a different policy")
     if gov.get("worker_sha256") != own_sha256: _refuse("WORKER_IDENTITY_MISMATCH", "session profile is not for this worker's bytes")
     if gov.get("facade_commit") != ACCEPTED_FACADE_COMMIT: _refuse("FACADE_IDENTITY_MISMATCH", "session profile names another facade")
+    if gov.get("execution_environment") != policy["execution_environment"]: _refuse("SESSION_PROFILE_MISMATCH", "session profile was sealed for another execution environment")
+    validate_host_primitive(gov.get("host_primitive"), "session profile", pins)
+    if gov["host_primitive"] != policy["host_primitive"]: _refuse("SESSION_PROFILE_MISMATCH", "session profile host_primitive differs from the policy grant")
+    if gov.get("caller_identity") != policy["caller_identity"]: _refuse("SESSION_PROFILE_MISMATCH", "session profile caller_identity differs from the policy grant")
+    conf = gov.get("confinement")
+    if not isinstance(conf, dict) or not _sha_hex(conf.get("seccomp_filter_sha256")) or conf.get("seccomp_filters") != 1 \
+            or conf.get("no_new_privs") != 1 or conf.get("capability_sets_empty") is not True \
+            or not isinstance(conf.get("denied_syscalls"), list) or not conf["denied_syscalls"] \
+            or not isinstance(conf.get("clone_namespace_flags_denied"), int) or conf["clone_namespace_flags_denied"] <= 0:
+        _refuse("SESSION_PROFILE_INVALID", "session profile does not seal the confinement contract for the Resolve child")
+    for name in ("mount", "umount2", "unshare", "setns", "pivot_root", "ptrace", "process_vm_readv", "process_vm_writev"):
+        if name not in conf["denied_syscalls"]:
+            _refuse("SESSION_PROFILE_INVALID", "the sealed confinement does not deny a call that would undo the evidence mask", syscall=name)
+    mask = gov.get("evidence_mask")
+    if not isinstance(mask, list) or not mask or any(not _abs_local_dir(m) for m in mask) or len(set(mask)) != len(mask):
+        _refuse("SESSION_PROFILE_INVALID", "session profile does not carry a bounded set of absolute worker-evidence paths to mask from Resolve")
+    for m in mask:
+        if m == "/" or gov["library"]["canonical_root"] == m or gov["library"]["canonical_root"].startswith(m.rstrip("/") + "/"):
+            _refuse("SESSION_PROFILE_INVALID", "an evidence mask would also hide the authorized library", path=m)
+        if prov_root_hint(prof) and (prov_root_hint(prof) == m or prov_root_hint(prof).startswith(m.rstrip("/") + "/")):
+            _refuse("SESSION_PROFILE_INVALID", "an evidence mask would also hide the sealed profile Resolve must read", path=m)
     glib = gov.get("library")
     if not isinstance(glib, dict) or any(glib.get(k) != policy["library"][k] for k in ("kind", "name", "canonical_root", "physical_dev", "physical_ino")):
         _refuse("SESSION_PROFILE_MISMATCH", "session profile library differs from the policy grant")
@@ -276,6 +592,12 @@ def load_session_profile(path, expected_sha256, policy, policy_sha256, authority
         _refuse("SESSION_PROFILE_INVALID", "profile does not record the monotonic (boot-relative) instant it was sealed at")
     if prov.get("registration_relpath") not in tree: _refuse("SESSION_PROFILE_INVALID", "the registration file is not part of the sealed tree")
     return prof, gov, prov
+
+def prov_root_hint(prof):
+    """The profile root as the manifest records it, used while the provenance block is still being validated."""
+    p = (prof or {}).get("provenance") or {}
+    r = p.get("profile_root")
+    return r if isinstance(r, str) and r.startswith("/") else None
 
 def _sha_hex(v): return isinstance(v, str) and bool(re.fullmatch(r"[0-9a-f]{64}", v))
 
@@ -384,6 +706,24 @@ def load_runtime_attestation(path, expected_sha256, gov, prov, session_sha256, p
     for k in ("resolve_pid", "resolve_start_ticks", "boot_time", "created_epoch", "launcher_pid"):
         if not isinstance(att.get(k), int) or isinstance(att.get(k), bool) or att[k] < 0: _refuse("RUNTIME_ATTESTATION_INVALID", f"runtime attestation field {k} is not a process fact")
     if att["created_epoch"] < prov["seal_epoch"]: _refuse("RUNTIME_ATTESTATION_INVALID", "runtime attestation predates the profile seal")
+    if att.get("execution_environment") != gov["execution_environment"]: _refuse("RUNTIME_ATTESTATION_INVALID", "runtime attestation was made for another execution environment")
+    if att.get("host_primitive") != gov["host_primitive"]: _refuse("HOST_PRIMITIVE_MISMATCH", "runtime attestation names another host primitive than the sealed profile")
+    for k in ("user_ns", "pid_ns", "net_ns", "worker_mnt_ns", "resolve_mnt_ns"):
+        if not (isinstance(att.get(k), str) and re.fullmatch(r"[a-z]+:\[\d+\]", att[k] or "")):
+            _refuse("RUNTIME_ATTESTATION_INVALID", f"runtime attestation field {k} is not a namespace identity")
+    if att["worker_mnt_ns"] == att["resolve_mnt_ns"]:
+        _refuse("CAPSULE_EVIDENCE_EXPOSED", "the launcher attested Resolve into the worker's own mount namespace")
+    if att.get("capsule_uid") != gov["host_primitive"]["capsule_uid"]: _refuse("CAPSULE_IDENTITY_MISMATCH", "runtime attestation names another capsule account")
+    if att.get("seccomp_filter_sha256") != gov["confinement"]["seccomp_filter_sha256"]:
+        _refuse("CAPSULE_CONFINEMENT_MISSING", "the launcher installed a different seccomp filter than the sealed profile pins",
+                expected=gov["confinement"]["seccomp_filter_sha256"], actual=att.get("seccomp_filter_sha256"))
+    if att.get("resolve_seccomp_filters") != gov["confinement"]["seccomp_filters"]:
+        _refuse("CAPSULE_CONFINEMENT_MISSING", "the launched Resolve carries a different number of seccomp filters than the seal allows",
+                expected=gov["confinement"]["seccomp_filters"], actual=att.get("resolve_seccomp_filters"))
+    if att.get("resolve_no_new_privs") != 1 or att.get("resolve_seccomp") != SECCOMP_MODE_FILTER:
+        _refuse("CAPSULE_CONFINEMENT_MISSING", "the launcher did not attest a confined Resolve process", no_new_privs=att.get("resolve_no_new_privs"), seccomp=att.get("resolve_seccomp"))
+    if sorted(att.get("evidence_mask") or []) != sorted(gov["evidence_mask"]):
+        _refuse("CAPSULE_EVIDENCE_EXPOSED", "the launcher masked a different evidence set than the sealed profile requires")
     return att
 
 # ---------------------------------------------------------------- Linux session/process attestation (real /proc facts only)
@@ -456,6 +796,51 @@ class SystemProbe:
                 except OSError: continue
                 if tgt.startswith("socket:[") and tgt[8:-1] in inodes: owners.setdefault(tgt[8:-1], set()).add(pid)
         return owners, unreadable
+    def account(self, name):
+        """The passwd entry for an account, or None. Like every other system fact the attestation depends on, it comes from the probe,
+        so an offline suite can describe a synthetic capsule instead of requiring one to exist on the machine running the tests."""
+        try:
+            import pwd
+            a = pwd.getpwnam(name)
+            return {"uid": a.pw_uid, "gid": a.pw_gid, "shell": a.pw_shell}
+        except KeyError: return None
+    def status_fields(self, pid):
+        """Confinement facts the kernel publishes for any process this uid may see: privilege gain, seccomp mode and every capability
+        set. These are the facts that make the evidence mask durable rather than advisory."""
+        out = {}
+        try:
+            for l in open(f"/proc/{pid}/status"):
+                k, sep, v = l.partition(":")
+                if not sep: continue
+                v = v.strip()
+                try:
+                    if k in ("NoNewPrivs", "Seccomp", "Seccomp_filters"): out[k] = int(v)
+                    elif k in ("CapInh", "CapPrm", "CapEff", "CapBnd", "CapAmb"): out[k] = int(v, 16)
+                    elif k == "Uid": out["Uid"] = int(v.split()[0])
+                except (ValueError, IndexError): return None
+        except OSError: return None
+        return out or None
+    def ns(self, pid, kind):
+        try: return os.readlink(f"/proc/{pid}/ns/{kind}")
+        except OSError: return None
+    def mountinfo(self, pid):
+        """The mount table AS THAT PROCESS SEES IT. A partially parseable table returns None: an unreadable mount table makes the
+        namespace unverifiable, never 'empty'."""
+        try: lines = open(f"/proc/{pid}/mountinfo").read().splitlines()
+        except OSError: return None
+        out = []
+        for ln in lines:
+            pre, sep, post = ln.partition(" - ")
+            if not sep: return None
+            p, q = pre.split(), post.split()
+            if len(p) < 6 or len(q) < 2: return None
+            out.append({"mount_point": _unescape_mount(p[4]), "options": p[5], "fstype": q[0],
+                        "source": _unescape_mount(q[1]), "super_options": q[2] if len(q) > 2 else ""})
+        return out
+    def statvfs_flag(self, path):
+        try: return os.statvfs(path).f_flag
+        except OSError: return None
+    def writable(self, path): return os.access(path, os.W_OK)
     def stat_file(self, path):
         try:
             st = os.stat(path)
@@ -469,6 +854,15 @@ class SystemProbe:
                 for chunk in iter(lambda: fh.read(1 << 22), b""): h.update(chunk)
         except OSError: return None
         return h.hexdigest()
+
+def _unescape_mount(s):
+    """mountinfo escapes space, tab, newline and backslash as octal; a path with a space must still compare equal."""
+    out, i = [], 0
+    while i < len(s):
+        if s[i] == "\\" and i + 3 < len(s) and s[i+1:i+4].isdigit():
+            out.append(chr(int(s[i+1:i+4], 8))); i += 4
+        else: out.append(s[i]); i += 1
+    return "".join(out)
 
 def env_value(entries, key):
     """Exactly one occurrence, or refuse. Zero is missing; two or more is AMBIGUOUS and must deny — the kernel keeps both, glibc reads
@@ -507,6 +901,7 @@ def attest_isolated_session(probe, gov, prov, att, hz=None, exe_cache=None, atte
     if pid != att["resolve_pid"]: _refuse("SESSION_NOT_ATTESTED", "the running Resolve is not the process the launcher created", attested_pid=att["resolve_pid"], actual_pid=pid)
     if probe.proc_uid(pid) != probe.uid(): _refuse("SESSION_OWNER_MISMATCH", "the Resolve process is not owned by this user", pid=pid)
     verify_executable(probe, gov, exe_cache)
+    capsule = attest_capsule_process(probe, gov, prov, att, pid)
     hz = hz or os.sysconf("SC_CLK_TCK")
     boot = probe.boot_time()
     if boot != att["boot_time"] or boot != prov["seal_boot_time"]:
@@ -534,7 +929,7 @@ def attest_isolated_session(probe, gov, prov, att, hz=None, exe_cache=None, atte
     owners = attest_endpoint(probe, gov["script_server_port"], pid, attempts)
     return {"pid": pid, "start": start, "start_ticks": ticks, "executable": binary, "uid": probe.uid(),
             "script_server_port": gov["script_server_port"], "endpoint_owner_pids": sorted(owners),
-            "session_id": gov.get("session_id"), "nonce_id": att["nonce_sha256"][:16]}
+            "session_id": gov.get("session_id"), "nonce_id": att["nonce_sha256"][:16], "capsule": capsule}
 
 def attest_endpoint(probe, port, pid, attempts=3):
     """CLOSED listener law (ISOR-F02): every LISTEN socket on the scripting port must be attributable to a process, and every such
@@ -615,11 +1010,16 @@ def watch_controller_path(port, interval_s, strikes, on_lost, on_event=None):
     threading.Thread(target=run, daemon=True).start()
 
 # ---------------------------------------------------------------- Resolve API attachment (LOCAL ONLY)
-def load_production_api():
-    """Production loader: the real DaVinciResolveScript ONLY. Refuses to start if any test-substitution variable is present
-    (F06): a fake identity oracle must never be selectable from the production CLI or environment."""
+def load_production_api(mode="QUALIFICATION_READ"):
+    """Production loader: the real scripting API ONLY. Refuses to start if any test-substitution variable is present (F06): a fake
+    identity oracle must never be selectable from the production CLI or environment.
+
+    PRODUCTION_READ loads the scripting extension straight out of the frozen root-owned capsule runtime and never runs the vendor
+    loader, whose documented fallback order ends at `/opt/resolve/libs/Fusion/` — bytes the operator account can rewrite.
+    QUALIFICATION_READ is unchanged frozen behaviour: it reads the operator's own Resolve, so it uses the operator's own install."""
     bad = sorted(k for k in os.environ if k.upper().startswith("VRC_FAKE") or k.upper() in ("RESOLVE_FAKE_API", "VRC_TEST_API"))
     if bad: raise SystemExit("REFUSED: test substitution variables present in production environment: " + ",".join(bad))
+    if mode == "PRODUCTION_READ": return load_capsule_api(CAPSULE_PINS)
     return _load_real_api()
 
 def load_api():
@@ -629,6 +1029,8 @@ def load_api():
     return _load_real_api()
 
 def _load_real_api():
+    """QUALIFICATION_READ / frozen-parity loader ONLY. Its vendor fallback order can reach the operator's mutable installation, which
+    is why no PRODUCTION_READ path calls it (see load_capsule_api)."""
     if platform.system() == "Windows":
         os.environ.setdefault("RESOLVE_SCRIPT_API", r"C:\ProgramData\Blackmagic Design\DaVinci Resolve\Support\Developer\Scripting")
         os.environ.setdefault("RESOLVE_SCRIPT_LIB", r"C:\Program Files\Blackmagic Design\DaVinci Resolve\fusionscript.dll")
@@ -746,7 +1148,8 @@ class ResolvePool:
 # ---------------------------------------------------------------- Worker
 class Worker:
     def __init__(self, host_id, secret, state_dir, api, require_library=None, mode="QUALIFICATION_READ", policy_path=None, policy_sha256=None,
-                 authority_path=None, session_path=None, session_sha256=None, attestation_path=None, attestation_sha256=None, probe=None):
+                 authority_path=None, session_path=None, session_sha256=None, attestation_path=None, attestation_sha256=None, probe=None,
+                 secret_path=None, capsule_pins=None):
         hn = socket.gethostname()
         if hn.lower() != host_id.lower(): raise SystemExit(f"HOST_ID_MISMATCH: --host-id {host_id} but hostname is {hn}")
         self.host_id, self.secret, self.state_dir, self.api = host_id, secret, state_dir, api
@@ -757,7 +1160,12 @@ class Worker:
         self.attestation_path, self.attestation_sha256 = attestation_path, attestation_sha256
         self.exe_cache = {}                          # sha256 keyed by (dev, ino, size, mtime_ns, ctime_ns); any in-place edit bumps ctime
         self.probe = probe or SystemProbe()          # constructor injection only; never selectable from the CLI or the environment
-        self.session_identity, self._policy_cache = None, None
+        self.pins = capsule_pins or CAPSULE_PINS     # likewise: the approved capsule boundary, injectable only by an offline suite
+        self.session_identity, self._policy_cache, self._caller = None, None, None
+        self.secret_path, self.capsule, self.host_cache = secret_path, None, {}
+        self.stop_pending = threading.Event()
+        self.stop_signal = lambda pid, sig: os.kill(pid, sig)          # the ONLY signal this worker ever sends
+        self.stop_exit = lambda: threading.Timer(0.75, os._exit, [0]).start()   # the capsule init tears the capsule down when the worker exits
         self.own_sha256 = self.own_sha()             # reported identity; re-hashed per operation, never trusted from this cache
         if mode == "PRODUCTION_READ":
             if require_library: raise SystemExit("REFUSED: --require-library is a QUALIFICATION_READ gate; PRODUCTION_READ takes the production chain instead")
@@ -765,11 +1173,14 @@ class Worker:
                 raise SystemExit("REFUSED: PRODUCTION_READ requires --production-authority, --production-policy(+sha256), --production-session(+sha256) and --production-runtime-attestation(+sha256)")
             if host_id not in PRODUCTION_HOSTS: raise SystemExit(f"REFUSED: production-read v1 supports only {PRODUCTION_HOSTS}; {host_id!r} is not authorizable")
             if platform.system() != PRODUCTION_PLATFORM: raise SystemExit("REFUSED: production-read v1 supports Linux only; Windows production reads are structurally unsupported")
+            if not secret_path: raise SystemExit("REFUSED: PRODUCTION_READ needs the shared HMAC key's path to verify its cross-account placement")
             try:                                      # startup: the whole chain must verify before the socket binds
                 asha = sha(open(authority_path, "rb").read())
-                pol, _ = load_production_policy(policy_path, policy_sha256, authority_path, host_id, self.own_sha256)
-                _, gov, prov = load_session_profile(session_path, session_sha256, pol, policy_sha256, asha, self.own_sha256, host_id)
+                pol, rec = load_production_policy(policy_path, policy_sha256, authority_path, host_id, self.own_sha256, self.pins)
+                _, gov, prov = load_session_profile(session_path, session_sha256, pol, policy_sha256, asha, self.own_sha256, host_id, self.pins)
                 load_runtime_attestation(attestation_path, attestation_sha256, gov, prov, session_sha256, policy_sha256, asha, self.own_sha256)
+                self.capsule = verify_host_primitive(pol["host_primitive"], self.probe, self.host_cache)
+                self._caller = verify_secret_placement(secret_path, secret, pol["caller_identity"], self.probe)
             except OpError as e: raise SystemExit(f"REFUSED: {e.message} {json.dumps(e.detail)}")
         elif policy_path or policy_sha256 or authority_path or session_path or session_sha256 or attestation_path or attestation_sha256:
             raise SystemExit("REFUSED: the production chain arguments are only valid with --mode PRODUCTION_READ")
@@ -781,7 +1192,8 @@ class Worker:
                          "worker_instance_id": uuid.uuid4().hex, "worker_generation": gen,
                          "worker_started_at": now_iso(), "worker_version": WORKER_VERSION, "protocol": PROTOCOL,
                          "read_profile": mode, "production_policy_sha256": policy_sha256, "session_profile_sha256": session_sha256,
-                         "runtime_attestation_sha256": attestation_sha256,
+                         "runtime_attestation_sha256": attestation_sha256, "execution_environment": CAPSULE_MODE if mode == "PRODUCTION_READ" else None,
+                         "capsule": self.capsule, "caller": self._caller,
                          "worker_sha256": self.own_sha256, "derived_from": DERIVED_FROM}
         self.replay = ReplayGuard(os.path.join(state_dir, "replay.jsonl"))
         self.pool = ResolvePool()
@@ -790,7 +1202,8 @@ class Worker:
         self.journal_event({"event": "WORKER_START", "worker_instance_id": self.identity["worker_instance_id"], "worker_generation": gen,
                             "replay_entries_loaded": self.replay.loaded, "require_library": require_library and require_library[0],
                             "read_profile": mode, "production_policy_sha256": policy_sha256, "session_profile_sha256": session_sha256,
-                            "runtime_attestation_sha256": attestation_sha256, "worker_sha256": self.own_sha256})
+                            "runtime_attestation_sha256": attestation_sha256, "worker_sha256": self.own_sha256,
+                            "execution_environment": CAPSULE_MODE if mode == "PRODUCTION_READ" else None, "capsule": self.capsule, "caller": self._caller})
 
     # ---- journaling (F-04): one lock, fsync per line, never headers/keys/bodies
     def journal_event(self, rec):
@@ -858,12 +1271,16 @@ class Worker:
     def production_chain(self, a):
         """Accepted authority -> policy -> sealed profile -> profile files -> physical root. Re-verified per operation."""
         own = self.own_sha()
-        try: pol, rec = load_production_policy(self.policy_path, self.policy_sha256, self.authority_path, self.host_id, own)
+        try: pol, rec = load_production_policy(self.policy_path, self.policy_sha256, self.authority_path, self.host_id, own, self.pins)
         except OpError as e: self._deny(a, "authority" if (e.detail or {}).get("reason", "").startswith("AUTHORITY") else "policy", e)
-        try: prof, gov, prov = load_session_profile(self.session_path, self.session_sha256, pol, self.policy_sha256, sha(open(self.authority_path, "rb").read()), own, self.host_id)
+        try: prof, gov, prov = load_session_profile(self.session_path, self.session_sha256, pol, self.policy_sha256, sha(open(self.authority_path, "rb").read()), own, self.host_id, self.pins)
         except OpError as e: self._deny(a, "profile", e)
         try: att = load_runtime_attestation(self.attestation_path, self.attestation_sha256, gov, prov, self.session_sha256, self.policy_sha256, sha(open(self.authority_path, "rb").read()), own)
         except OpError as e: self._deny(a, "attestation", e)
+        try:
+            self.capsule = verify_host_primitive(pol["host_primitive"], self.probe, self.host_cache)
+            self._caller = verify_secret_placement(self.secret_path, self.secret, pol["caller_identity"], self.probe)
+        except OpError as e: self._deny(a, "capsule", e)
         try:
             verify_profile_root(prov)
             verify_profile_tree(prov, gov)
@@ -874,6 +1291,11 @@ class Worker:
                 _refuse("LIBRARY_NOT_AUTHORIZED", "the authorized root no longer resolves to the pinned physical identity", expected=gov["library"], actual=phys)
         except OpError as e: self._deny(a, "library", e)
         a["session_id"] = gov.get("session_id"); a["authority_sha256"] = gov.get("authority_sha256")
+        a["execution_environment"] = pol["execution_environment"]
+        a["host_primitive"] = {"capsule_uid": self.capsule["capsule_uid"], "broker_sha256": self.capsule["broker_sha256"],
+                               "runtime_root": self.capsule["runtime_root"], "resolve_binary_sha256": self.capsule["resolve_binary_sha256"],
+                               "host_review_manifest_sha256": self.capsule["host_review_manifest_sha256"]}
+        a["hmac_key_id"] = self._caller["hmac_key_id"]
         a["profile_sha256"] = self.session_sha256
         a["profile_root"] = {"realpath": prov["profile_root"], "dev": prov["profile_root_dev"], "ino": prov["profile_root_ino"]}
         a["executable_sha256"] = gov["resolve_binary"]["sha256"]
@@ -892,7 +1314,8 @@ class Worker:
                          attested=self.session_identity, observed={"pid": ident["pid"], "start_ticks": ident["start_ticks"]})
             except OpError as e: self._deny(a, "session", e)
         a["session"] = {"pid": ident["pid"], "start": ident["start"], "start_ticks": ident["start_ticks"], "executable": ident["executable"],
-                        "endpoint_owner_pids": ident["endpoint_owner_pids"], "script_server_port": ident["script_server_port"], "nonce_id": ident["nonce_id"]}
+                        "endpoint_owner_pids": ident["endpoint_owner_pids"], "script_server_port": ident["script_server_port"], "nonce_id": ident["nonce_id"],
+                        "capsule": ident["capsule"]}
         a["allowed_projects"] = len(pol["projects"]); self._policy_cache = pol
         return pol
 
@@ -923,6 +1346,41 @@ class Worker:
         except OpError as e: self._deny(a, "project", e)
         a.update(decision="ALLOWED", stage="project", project_uuid=proj["uuid"])
 
+    def session_stop(self, env, a):
+        """Governed STOP. The only non-read operation this worker exposes, and it is not a Resolve operation: it never attaches, never
+        calls the scripting API and takes no parameters, so it can name no process. The target is the pid the launcher attested, and the
+        FULL production chain — accepted authority, policy, sealed profile, exact tree, host primitive, key placement, capsule
+        confinement, endpoint attribution — is re-verified immediately before the signal, exactly as it is before a read.
+
+        The signal is SIGKILL, deliberately. A graceful Resolve quit is the one path in which Resolve writes; a production read holds no
+        write authority, so the governed stop never offers one. (It could not write anyway: the library is mounted read-only.) When the
+        worker then exits, the capsule init — pid 1 of the capsule's own pid namespace — collapses the whole capsule with it, so the
+        operator regains a clean host without any new host authority, signal path or privileged helper."""
+        if self.mode != "PRODUCTION_READ": raise OpError("UNSUPPORTED_OPERATION", "session_stop", {"reason": "GOVERNED_STOP_NOT_APPLICABLE"})
+        if env.get("params"): raise OpError("UNSUPPORTED_OPERATION", "the governed stop takes no parameters; it can only end the attested session",
+                                            {"reason": "GOVERNED_STOP_PARAMETERS_REFUSED", "supplied": sorted(env["params"])[:8]})
+        self.attest_session(a)
+        ident = self.session_identity
+        pid, ticks = ident["pid"], ident["start_ticks"]
+        if self.probe.start_ticks(pid) != ticks:
+            try: _refuse("SESSION_RESTARTED", "the attested process is no longer the attested session; the governed stop never signals a reused pid", pid=pid)
+            except OpError as e: self._deny(a, "session", e)
+        a.update(decision="ALLOWED", stage="session_stop", control_op="session_stop", project_uuid=None)
+        self.stop_pending.set()
+        self.stop_signal(pid, signal.SIGKILL)
+        gone = False
+        for _ in range(40):
+            if self.probe.start_ticks(pid) != ticks: gone = True; break
+            time.sleep(0.05)
+        self.journal_event({"event": "SESSION_STOPPED", "resolve_pid": pid, "resolve_start_ticks": ticks, "signal": "SIGKILL",
+                            "resolve_exited": gone, "session_id": ident.get("session_id"), "nonce_id": ident.get("nonce_id"),
+                            "worker_instance_id": self.identity["worker_instance_id"], "caller": env.get("caller"), "authorization": dict(a)})
+        self.stop_exit()
+        return {"resolve": {"available": False, "session_stopped": True, "process": None, "external_scripting_mode": external_scripting_mode(), "authorization": a},
+                "project": None, "timeline": None,
+                "result": {"stopped": True, "resolve_pid": pid, "signal": "SIGKILL", "resolve_exited": gone,
+                           "worker_exit": "scheduled", "capsule_teardown": "the capsule init exits with the worker"}}
+
     def _snapshot_for(self, a):
         """One Resolve attachment per operation. In PRODUCTION_READ the whole chain and the session are attested first, so nothing is read
         from a session that was not born into the sealed profile."""
@@ -936,6 +1394,9 @@ class Worker:
         if not env.get("target_host"): raise OpError("TARGET_REQUIRED", "envelope has no target_host; there is no default target")
         if str(env["target_host"]).lower() != self.host_id.lower(): raise OpError("TARGET_MISMATCH", f"envelope targets {env.get('target_host')!r}, this worker is {self.host_id}")
         if op in FORBIDDEN_OPS: raise OpError("READ_ONLY_MODE", f"{op} is a write-class operation; Phase 1 worker has no write authority")
+        if self.stop_pending.is_set(): raise OpError("RESOLVE_UNAVAILABLE", "the governed stop ended this session; a new seal, launch and attestation are required",
+                                                     {"reason": "SESSION_STOPPED", "resolve": {"available": False, "session_stopped": True}})
+        if op in CONTROL_OPS: return self.session_stop(env, a)
         if op not in READ_ONLY_OPS: raise OpError("UNSUPPORTED_OPERATION", str(op))
         base = {"process": resolve_process(), "external_scripting_mode": external_scripting_mode()}
         if op == "health": return self.health(base, deadline_s, a)
@@ -1092,9 +1553,10 @@ def main():
     if a.require_library:
         name, _, root = a.require_library.partition("="); req = (name, root or None)
         if name in PROHIBITED_LIBRARIES: raise SystemExit("REFUSED: --require-library names a prohibited library")
-    srv = ThreadingHTTPServer((BIND, a.port), Handler); srv.worker = Worker(a.host_id, secret, a.state_dir, load_production_api(), req, a.mode, a.production_policy, a.production_policy_sha256,
+    srv = ThreadingHTTPServer((BIND, a.port), Handler); srv.worker = Worker(a.host_id, secret, a.state_dir, load_production_api(a.mode), req, a.mode, a.production_policy, a.production_policy_sha256,
                                                                        a.production_authority, a.production_session, a.production_session_sha256,
-                                                                       a.production_runtime_attestation, a.production_runtime_attestation_sha256)
+                                                                       a.production_runtime_attestation, a.production_runtime_attestation_sha256,
+                                                                       secret_path=os.path.abspath(a.secret_file))
     anchor = None
     if a.exit_with_session:
         anchor = find_session_anchor()
@@ -1109,6 +1571,7 @@ def main():
     print(json.dumps({"worker_up": srv.worker.identity, "bind": f"{BIND}:{a.port}", "session_anchor_pid": anchor, "liveness_port": a.liveness_port,
                       "require_library": req and req[0], "read_profile": a.mode, "production_policy_sha256": a.production_policy_sha256, "session_profile_sha256": a.production_session_sha256,
                       "runtime_attestation_sha256": a.production_runtime_attestation_sha256, "worker_sha256": srv.worker.own_sha256,
+                      "execution_environment": srv.worker.identity["execution_environment"], "capsule": srv.worker.capsule, "caller": srv.worker._caller,
                       "replay_entries_loaded": srv.worker.replay.loaded}), flush=True); srv.serve_forever()
 
 if __name__ == "__main__": main()

@@ -15,8 +15,9 @@ import http.client, json, os, re, shutil, socket, subprocess, sys, tempfile, thr
 HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(HERE)
 FROZEN = os.environ.get("VRC_PHASE1_ROOT", os.path.expanduser("~/resolve-authority-freeze-v1.20/resolve-control"))
 FACADE = os.environ.get("VRC_FACADE_PLUGIN", os.path.expanduser("~/resolve-hermes/plugins/vidtoolz-resolve-readonly"))
-sys.path[:0] = [FROZEN, os.path.join(ROOT, "worker"), os.path.join(ROOT, "tools"), HERE]
+sys.path[:0] = [FROZEN, os.path.join(ROOT, "worker"), os.path.join(ROOT, "tools"), os.path.join(ROOT, "capsule"), HERE]
 import resolve_worker as rw
+import vrc_capsule_confine as confine_mod
 import fake_resolve                                   # test-only identity oracle; never reachable from the production CLI
 import compile_production_read_policy as comp
 import generate_session_profile as gen
@@ -43,10 +44,73 @@ TLS = [{"name": "TL_A", "uuid": str(uuid.uuid4())}, {"name": "TL_B", "uuid": str
 HZ = os.sysconf("SC_CLK_TCK")
 NONCE = "a1" * 32
 TMP = []
+# The cross-account HMAC key. One key per run, generated here, so the key IDENTITY the accepted authority names is the identity of the
+# bytes the worker actually loads — the test cannot accidentally prove the property with a key nobody uses.
+SECRET = os.urandom(32).hex().encode()
+KEY_ID = rw.sha(SECRET)[:16]
+OPERATOR_UID = 1000                     # the account Hermes runs as; deliberately NOT the capsule account
+CAPSULE_UID = CAPSULE_GID = 981
+CAPSULE_ACCOUNT = "vrc-capsule-synthetic"
+SECCOMP_SHA = rw.sha(confine_mod.seccomp_program()[0])
+NS = {"user": "user:[4026500001]", "pid": "pid:[4026500002]", "net": "net:[4026500003]",
+      "worker_mnt": "mnt:[4026500004]", "resolve_mnt": "mnt:[4026500005]"}
 
 
 def tmpdir(prefix):
     d = tempfile.mkdtemp(prefix=prefix); TMP.append(d); return d
+
+
+def sha_file(path):
+    return rw.sha(open(path, "rb").read())
+
+
+def synthetic_capsule(spawnable=False):
+    """A complete stand-in for the APPROVED dedicated-capsule host boundary: a broker, a frozen 'Resolve runtime' with its manifest, and
+    the evidence directories a session masks. It is injected the same way FakeProbe is — explicitly, by parameter — so the whole chain
+    can be driven offline without touching the real capsule, and so every refusal of the real one can be reproduced.
+
+    A record naming this boundary is USELESS against a production worker: the worker compares the block against its own frozen
+    constants and refuses anything else (proved by HostPrimitive.test_a_synthetic_boundary_is_refused_by_a_production_worker)."""
+    base = tmpdir("capsule-")
+    runtime = os.path.join(base, "resolve-runtime")
+    os.makedirs(os.path.join(runtime, "bin")); os.makedirs(os.path.join(runtime, "libs", "Fusion"))
+    binpath = os.path.join(runtime, "bin", "resolve")
+    if spawnable: shutil.copyfile(sys.executable, binpath)
+    else: open(binpath, "wb").write(b"\x7fELF" + b"\0" * 4092)
+    os.chmod(binpath, 0o755)
+    lib = os.path.join(runtime, "libs", "Fusion", "fusionscript.so")
+    open(lib, "wb").write(b"\x7fELF" + b"\0" * 2044)
+    broker = os.path.join(base, "vrc-capsule-launch"); open(broker, "wb").write(b"#!/bin/false\n# synthetic broker\n"); os.chmod(broker, 0o755)
+    man = os.path.join(runtime, "RUNTIME-MANIFEST.sha256")
+    open(man, "w").write(f"{sha_file(binpath)}  bin/resolve\n{sha_file(lib)}  libs/Fusion/fusionscript.so\n")
+    pins = {"execution_environment": "DEDICATED_CAPSULE_V1", "capsule_account": CAPSULE_ACCOUNT,
+            "capsule_uid": CAPSULE_UID, "capsule_gid": CAPSULE_GID, "broker_path": broker, "broker_sha256": sha_file(broker),
+            "runtime_root": runtime, "runtime_manifest_sha256": sha_file(man), "resolve_binary_sha256": sha_file(binpath),
+            "script_lib_relpath": "libs/Fusion/fusionscript.so", "script_lib_sha256": sha_file(lib),
+            "host_boundary_schema": rw.HOST_BOUNDARY_SCHEMA, "host_review_manifest_sha256": rw.HOST_REVIEW_MANIFEST_SHA256}
+    evidence = os.path.join(base, "evidence"); wstate = os.path.join(base, "worker-state")
+    os.makedirs(evidence); os.makedirs(wstate)
+    bpath = os.path.join(base, "host-boundary.json"); json.dump(pins, open(bpath, "w"))
+    return {"base": base, "pins": pins, "boundary_path": bpath, "binary": binpath, "broker": broker,
+            "runtime": runtime, "manifest": man, "script_lib": lib, "mask": [evidence, wstate]}
+
+
+CAP = synthetic_capsule()
+
+
+def secret_file(d, data=SECRET):
+    """The shared HMAC key as the operator places it: readable, never writable by the capsule. The OWNER is supplied by the probe —
+    this suite runs as one uid and cannot create a file owned by another."""
+    p = os.path.join(d, "session.key"); open(p, "wb").write(data); os.chmod(p, 0o640); return p
+
+
+def caller_identity(key_id=None, operator_uid=None):
+    return {"operator_uid": OPERATOR_UID if operator_uid is None else operator_uid, "hmac_key_id": key_id or KEY_ID}
+
+
+def MASK(p):
+    """The --evidence-mask arguments a sealed profile is generated with."""
+    return [a for m in p.mask for a in ("--evidence-mask", m)]
 
 
 def free_port():
@@ -69,11 +133,14 @@ def state(libname, puuid, name="Prod Project", tls=None, project_list=None, libt
 
 def record(library, projects, status="ACCEPTED", approved_by="Mikko", approved_at="2026-09-22",
            acceptance="test-fixture/ACCEPTANCE.json", worker_sha=WSHA, facade=FACADE_COMMIT,
-           host_id=HOST, platform_="Linux", session_type="ISOLATED_DISK_SESSION", **extra):
+           host_id=HOST, platform_="Linux", session_type="ISOLATED_DISK_SESSION", capsule=None,
+           execution_environment="DEDICATED_CAPSULE_V1", caller=None, control=("session_stop",), **extra):
     r = {"schema": "vidtoolz.resolveProductionReadAuthority.v1", "authority_id": "test-authority", "status": status,
          "approved_by": approved_by, "approved_at": approved_at, "acceptance_record": acceptance,
          "worker_identity": {"component": "test", "worker_sha256": worker_sha}, "facade_identity": {"commit": facade},
          "host_id": host_id, "platform": platform_, "session_profile_type": session_type,
+         "execution_environment": execution_environment, "host_primitive": dict(CAP["pins"] if capsule is None else capsule),
+         "caller_identity": dict(caller_identity() if caller is None else caller), "control_operations": list(control),
          "library": library, "projects": [{"project_uuid": u} for u in projects], "operations": list(comp.OPS),
          "write_authority": "NONE", "persistent_worker_authority": "NONE", "external_scripting": "Local", "project_open_law": LAW}
     r.update(extra); return r
@@ -116,23 +183,28 @@ def run(cmd, **kw):
 
 class Profile:
     """An ACCEPTED grant compiled to a LIVE policy and sealed into an isolated one-library session profile, using the real tools."""
-    def __init__(self, library, projects, src=None, resolve_binary=None, cfg=None, port=1144, root=None):
+    def __init__(self, library, projects, src=None, resolve_binary=None, cfg=None, port=1144, root=None, capsule=None, mask=None):
         self.d = tmpdir("chain-")
-        self.src = src if src is not None else record(library, projects)
+        self.cap = capsule or CAP
+        self.src = src if src is not None else record(library, projects, capsule=self.cap["pins"])
         self.src_path = os.path.join(self.d, "authority.json")
         open(self.src_path, "wb").write(json.dumps(self.src, indent=1).encode())
         self.pol_path = os.path.join(self.d, "policy.json")
-        rc, js, raw = run([sys.executable, "-B", COMPILER, self.src_path, self.pol_path, "--worker", WORKER_PATH])
+        rc, js, raw = run([sys.executable, "-B", COMPILER, self.src_path, self.pol_path, "--worker", WORKER_PATH,
+                           "--host-boundary", self.cap["boundary_path"]])
         if rc != 0: raise comp.PolicyError(js.get("message") or raw)
         self.pol_sha = rw.sha(open(self.pol_path, "rb").read())
-        self.binary = resolve_binary or fake_binary()
+        self.binary = resolve_binary or self.cap["binary"]
         self.cfg = cfg or source_config()
         self.root = root or os.path.join(self.d, "profile")
         self.session_path = os.path.join(self.d, "session-profile.json")
         self.port = port
+        self.mask = list(mask if mask is not None else self.cap["mask"])
+        mask_args = [a for m in self.mask for a in ("--evidence-mask", m)]
         rc, js, raw = run([sys.executable, "-B", GENERATOR, "--authority", self.src_path, "--policy", self.pol_path,
                            "--worker", WORKER_PATH, "--source-config", self.cfg, "--profile-root", self.root,
-                           "--out", self.session_path, "--resolve-binary", self.binary, "--script-server-port", str(port)])
+                           "--out", self.session_path, "--resolve-binary", self.binary, "--script-server-port", str(port),
+                           "--host-boundary", self.cap["boundary_path"]] + mask_args)
         if rc != 0: raise gen.GenerateError(js.get("message") or raw)
         self.gen_out = js
         self.session_sha = rw.sha(open(self.session_path, "rb").read())
@@ -154,7 +226,13 @@ class Profile:
                 "launcher_pid": 4000, "spawn_pid": 4001, "resolve_pid": p.resolve_pids[0] if p.resolve_pids else 9001,
                 "resolve_start_ticks": p.start_ticks(0), "boot_time": p.boot_time(),
                 "clock_ticks_per_second": HZ, "created_epoch": self.prov["seal_epoch"] + 1,
-                "profile_seal_epoch": self.prov["seal_epoch"]}
+                "profile_seal_epoch": self.prov["seal_epoch"],
+                "execution_environment": self.gov["execution_environment"], "host_primitive": dict(self.gov["host_primitive"]),
+                "capsule_uid": self.gov["host_primitive"]["capsule_uid"], "user_ns": NS["user"], "pid_ns": NS["pid"],
+                "net_ns": NS["net"], "worker_mnt_ns": NS["worker_mnt"], "resolve_mnt_ns": NS["resolve_mnt"],
+                "resolve_no_new_privs": 1, "resolve_seccomp": 2, "resolve_seccomp_filters": 1,
+                "seccomp_filter_sha256": self.gov["confinement"]["seccomp_filter_sha256"],
+                "evidence_mask": sorted(self.gov["evidence_mask"])}
         body.update(over)
         body["attestation_sha256"] = gen.canonical_sha256({k: v for k, v in body.items() if k != "attestation_sha256"})
         open(self.att_path, "w").write(json.dumps(body, sort_keys=True, separators=(",", ":")))
@@ -167,10 +245,20 @@ class Profile:
 class FakeProbe(rw.SystemProbe):
     """Deterministic /proc facts. Only the process-fact methods are faked; file identity and hashing still come from the real
     filesystem. Environment entries are an ORDERED LIST, exactly as /proc/<pid>/environ delivers them."""
-    def __init__(self, profile, start_after=60, uid=4242, boot=None, resolve_pids=(9001,), listener_pid=9002,
+    def __init__(self, profile, start_after=60, uid=None, boot=None, resolve_pids=(9001,), listener_pid=9002,
                  env_entries=None, exe=None, listener_parent=None, nonce=NONCE, extra_env=(), owners=None,
-                 unattributed=(), tables=True, unstable=False):
-        self.profile, self._uid = profile, uid
+                 unattributed=(), tables=True, unstable=False, secret_path=None, secret_uid=OPERATOR_UID,
+                 secret_writable=False, ns=None, status=None, mask=None, readonly=None, worker_mask=()):
+        self.profile = profile
+        self._uid = profile.gov["host_primitive"]["capsule_uid"] if uid is None else uid
+        self.hp = profile.gov["host_primitive"]
+        self.secret_path, self.secret_uid, self.secret_writable = secret_path, secret_uid, secret_writable
+        self._ns = dict(ns or {})
+        self._status = dict(status if status is not None else {"NoNewPrivs": 1, "Seccomp": 2, "Seccomp_filters": 1,
+                                                               "CapBnd": 0, "CapEff": 0, "CapPrm": 0, "CapInh": 0, "CapAmb": 0})
+        self.mask = list(profile.gov["evidence_mask"] if mask is None else mask)
+        self.worker_mask = list(worker_mask)
+        self.readonly = list(readonly if readonly is not None else [profile.gov["library"]["canonical_root"], self.hp["runtime_root"]])
         self._boot = profile.prov["seal_boot_time"] if boot is None else boot
         self.resolve_pids = list(resolve_pids); self.listener_pid = listener_pid
         self._exe = exe or profile.gov["resolve_binary"]["realpath"]
@@ -182,13 +270,42 @@ class FakeProbe(rw.SystemProbe):
         self._listener_parent = listener_parent if listener_parent is not None else (self.resolve_pids[0] if self.resolve_pids else 1)
         self.owners = dict(owners) if owners is not None else ({"111": {listener_pid}} if listener_pid else {})
         self.unattributed = set(unattributed); self.tables = tables; self.unstable = unstable; self._calls = 0
+        self.gone = False                       # set by the governed-stop tests: after SIGKILL the process facts disappear
     def uid(self): return self._uid
+    def account(self, name):
+        return {"uid": self.hp["capsule_uid"], "gid": self.hp["capsule_gid"], "shell": "/usr/sbin/nologin"} if name == self.hp["capsule_account"] else None
+    def stat_file(self, path):
+        """Real file identity, with two facts the running machine cannot supply for a SYNTHETIC capsule: the frozen runtime and the
+        broker are root-owned, and the shared HMAC key belongs to the operator account rather than to this test user."""
+        st = super().stat_file(path)
+        if st and (path == self.hp["broker_path"] or path.startswith(self.hp["runtime_root"])): st["uid"] = 0
+        if st and self.secret_path and os.path.abspath(path) == os.path.abspath(self.secret_path): st["uid"] = self.secret_uid
+        return st
+    def writable(self, path):
+        if self.secret_path and os.path.abspath(path) == os.path.abspath(self.secret_path): return self.secret_writable
+        return super().writable(path)
+    def ns(self, pid, kind):
+        if kind in self._ns: return self._ns[kind]
+        if kind == "mnt": return NS["resolve_mnt"] if pid in self.resolve_pids else NS["worker_mnt"]
+        return NS.get(kind)
+    def status_fields(self, pid):
+        return dict(self._status) if pid in self.resolve_pids else {"NoNewPrivs": 0, "Seccomp": 0, "CapBnd": 0, "CapEff": 0}
+    def mountinfo(self, pid):
+        rows = [{"mount_point": "/", "options": "rw,relatime", "fstype": "ext4", "source": "/dev/root", "super_options": "rw"}]
+        for ro in self.readonly:
+            rows.append({"mount_point": ro, "options": "ro,relatime", "fstype": "ext4", "source": "/dev/root", "super_options": "ro"})
+        masked = self.mask if pid in self.resolve_pids else self.worker_mask
+        for m in masked:
+            rows.append({"mount_point": m, "options": "ro,nosuid,nodev,noexec,relatime", "fstype": "tmpfs", "source": "tmpfs", "super_options": "ro,size=0k"})
+        return rows
+    def statvfs_flag(self, path):
+        return rw.ST_RDONLY if any(path == r or path.startswith(r.rstrip("/") + "/") for r in self.readonly) else 0
     def boot_time(self): return self._boot
     def pids(self): return sorted(set(self.resolve_pids + ([self.listener_pid] if self.listener_pid else []) + [1]))
     def exe(self, pid): return self._exe if pid in self.resolve_pids else ("/usr/bin/other" if pid != 1 else "/sbin/init")
     def proc_uid(self, pid): return self._uid
     def ppid(self, pid): return self._listener_parent if pid == self.listener_pid else (0 if pid == 1 else 1)
-    def start_ticks(self, pid=None): return int(self.start_uptime * HZ)
+    def start_ticks(self, pid=None): return None if self.gone else int(self.start_uptime * HZ)
     def environ_entries(self, pid): return list(self._entries) if pid in self.resolve_pids else []
     def listen_inodes(self, port):
         if not self.tables: return None
@@ -211,8 +328,9 @@ class Env:
         open(os.path.join(self.cfg, "config.dat"), "wb").write(b"xx System.Scripting.Mode = 1 yy")
         self._orig = rw.resolve_config_dir; rw.resolve_config_dir = lambda: self.cfg
         self.probe = probe or FakeProbe(profile)
-        self.secret = os.urandom(32).hex().encode(); self.sf = os.path.join(self.d, "secret")
-        open(self.sf, "wb").write(self.secret); os.chmod(self.sf, 0o600)
+        self.secret = SECRET; self.sf = os.path.join(self.d, "secret")
+        open(self.sf, "wb").write(self.secret); os.chmod(self.sf, 0o640)
+        self.probe.secret_path = getattr(self.probe, "secret_path", None) or self.sf   # the key the worker must find operator-owned
         self.port = free_port(); self.wstate = os.path.join(self.d, "wstate")
         prod = mode == "PRODUCTION_READ"
         try:
@@ -220,7 +338,8 @@ class Env:
                                     profile.pol_path if prod else None, profile.pol_sha if prod else None,
                                     profile.src_path if prod else None, profile.session_path if prod else None,
                                     (session_sha or profile.session_sha) if prod else None,
-                                    profile.att_path if prod else None, (att_sha or profile.att_sha) if prod else None, self.probe)
+                                    profile.att_path if prod else None, (att_sha or profile.att_sha) if prod else None, self.probe,
+                                    self.sf if prod else None, profile.gov["host_primitive"] if prod else None)
         except BaseException:
             self.restore(); raise
         self.srv = rw.ThreadingHTTPServer(("127.0.0.1", self.port), rw.Handler); self.srv.worker = self.worker
@@ -259,13 +378,19 @@ class Fixture:
         self.name = "Prod Disk A"; self.bname = "Prod Disk B"
     def lib(self, root=None): return libspec(self.name, root or self.A)
     def profile(self, projects=(P_A1, P_A2), **kw): return Profile(self.lib(), list(projects), **kw)
+    def private_profile(self, projects=(P_A1, P_A2), spawnable=False, **kw):
+        """A profile sealed against its OWN synthetic capsule — for the tests that deliberately mutate or delete the sealed executable.
+        The approved runtime is root-owned and immutable to this suite, which is the point of freezing it; the law still has to be
+        proved somewhere the suite can actually break it."""
+        cap = synthetic_capsule(spawnable=spawnable)
+        return Profile(self.lib(), list(projects), capsule=cap, mask=cap["mask"], **kw)
     def st(self, puuid=P_A1, **kw): return state(self.name, puuid, project_list=["Prod Project", "Second"], **kw)
 
 
 class Authority(unittest.TestCase):
     """The compiler is the only door to a LIVE policy, and v1 is structurally vidnux/Linux/one-Disk-library/ISOLATED_DISK_SESSION."""
     def setUp(self): self.fx = Fixture()
-    def c(self, src, preview=False): return comp.compile_record(json.dumps(src).encode(), WSHA, preview=preview)
+    def c(self, src, preview=False): return comp.compile_record(json.dumps(src).encode(), WSHA, preview=preview, boundary=CAP["pins"])
 
     def test_accepted_record_compiles_to_a_deterministic_live_policy(self):
         src = record(self.fx.lib(), [P_A1, P_A2])
@@ -345,11 +470,11 @@ class Authority(unittest.TestCase):
     def test_compiler_cli_writes_canonical_bytes_and_refuses_on_stdout(self):
         d = tmpdir("cli-"); sp = os.path.join(d, "a.json"); op = os.path.join(d, "p.json")
         open(sp, "w").write(json.dumps(record(self.fx.lib(), [P_A1])))
-        rc, js, _ = run([sys.executable, "-B", COMPILER, sp, op, "--worker", WORKER_PATH])
+        rc, js, _ = run([sys.executable, "-B", COMPILER, sp, op, "--worker", WORKER_PATH, "--host-boundary", CAP["boundary_path"]])
         self.assertEqual(rc, 0); self.assertTrue(js["live"])
         self.assertEqual(open(op, "rb").read(), comp.canon(json.load(open(op))))
         open(sp, "w").write(json.dumps(record(self.fx.lib(), [P_A1], status="REJECTED")))
-        rc, js, _ = run([sys.executable, "-B", COMPILER, sp, os.path.join(d, "p2.json"), "--worker", WORKER_PATH])
+        rc, js, _ = run([sys.executable, "-B", COMPILER, sp, os.path.join(d, "p2.json"), "--worker", WORKER_PATH, "--host-boundary", CAP["boundary_path"]])
         self.assertEqual(rc, 2); self.assertEqual(js["error"], "POLICY_REJECTED")
         self.assertFalse(os.path.exists(os.path.join(d, "p2.json")))
 
@@ -384,7 +509,7 @@ class SessionProfile(unittest.TestCase):
 
     def test_governed_block_is_deterministic_across_regeneration(self):
         p1 = self.fx.profile()
-        p2 = Profile(self.fx.lib(), [P_A1, P_A2], src=p1.src, resolve_binary=p1.binary, cfg=p1.cfg)
+        p2 = Profile(self.fx.lib(), [P_A1, P_A2], src=p1.src, cfg=p1.cfg)
         self.assertEqual(p1.manifest["governed_sha256"], p2.manifest["governed_sha256"])
         self.assertEqual(p1.gov["session_id"], p2.gov["session_id"])
         self.assertNotEqual(p1.prov["profile_root"], p2.prov["profile_root"])
@@ -407,23 +532,27 @@ class SessionProfile(unittest.TestCase):
         base = tmpdir("roots-")
         rc, js, _ = run([sys.executable, "-B", GENERATOR, "--authority", p.src_path, "--policy", p.pol_path, "--worker", WORKER_PATH,
                          "--source-config", p.cfg, "--profile-root", "relative-profile",
-                         "--out", os.path.join(base, "s.json"), "--resolve-binary", p.binary], cwd=base)
+                         "--out", os.path.join(base, "s.json"), "--resolve-binary", p.binary,
+                         "--host-boundary", p.cap["boundary_path"]] + MASK(p), cwd=base)
         self.assertEqual(rc, 2, "a relative --profile-root must be refused, not silently made absolute")
         self.assertIn("absolute", js["message"])
         real = os.path.join(base, "real"); link = os.path.join(base, "link"); os.mkdir(real); os.symlink(real, link)
         rc, js, _ = run([sys.executable, "-B", GENERATOR, "--authority", p.src_path, "--policy", p.pol_path, "--worker", WORKER_PATH,
                          "--source-config", p.cfg, "--profile-root", link,
-                         "--out", os.path.join(real, "inside.json"), "--resolve-binary", p.binary])
+                         "--out", os.path.join(real, "inside.json"), "--resolve-binary", p.binary,
+                         "--host-boundary", p.cap["boundary_path"]] + MASK(p))
         self.assertEqual(rc, 2, "a symlinked profile root must be refused")
         self.assertFalse(os.path.exists(os.path.join(real, "inside.json")))
         root2 = os.path.join(base, "p2")
         rc, js, _ = run([sys.executable, "-B", GENERATOR, "--authority", p.src_path, "--policy", p.pol_path, "--worker", WORKER_PATH,
                          "--source-config", p.cfg, "--profile-root", root2,
-                         "--out", os.path.join(root2, "inside.json"), "--resolve-binary", p.binary])
+                         "--out", os.path.join(root2, "inside.json"), "--resolve-binary", p.binary,
+                         "--host-boundary", p.cap["boundary_path"]] + MASK(p))
         self.assertEqual(rc, 2); self.assertIn("outside", js["message"])
         rc, js, _ = run([sys.executable, "-B", GENERATOR, "--authority", p.src_path, "--policy", p.pol_path, "--worker", WORKER_PATH,
                          "--source-config", p.cfg, "--profile-root", p.prov["profile_root"],
-                         "--out", os.path.join(base, "again.json"), "--resolve-binary", p.binary])
+                         "--out", os.path.join(base, "again.json"), "--resolve-binary", p.binary,
+                         "--host-boundary", p.cap["boundary_path"]] + MASK(p))
         self.assertEqual(rc, 2); self.assertIn("not empty", js["message"])
 
     def test_generated_profile_and_attestation_match_their_schemas(self):
@@ -645,7 +774,13 @@ class ProcessOrdering(Attest):
 
 
 class Executable(Attest):
-    """ISOR-F06. Realpath, size AND sha256 — the digest is recomputed whenever the inode's identity, size, mtime or ctime changes."""
+    """ISOR-F06. Realpath, size AND sha256 — the digest is recomputed whenever the inode's identity, size, mtime or ctime changes.
+
+    These tests edit and delete the sealed executable, so they get their OWN synthetic capsule: the approved runtime is root-owned and
+    the suite could not mutate it even if it wanted to — which is the point of freezing it, and exactly why the law still has to be
+    proved somewhere the suite can actually break it."""
+    def setUp(self):
+        self.fx = Fixture(); self.p = self.fx.private_profile(); self.cap = self.p.cap
     def test_a_same_size_byte_mutation_is_caught(self):
         path = self.p.gov["resolve_binary"]["realpath"]
         data = bytearray(open(path, "rb").read()); data[-1] ^= 1
@@ -721,16 +856,16 @@ class Launcher(unittest.TestCase):
     executable is stood in for (a copy of this interpreter), because no production Resolve may be started by a test."""
     def setUp(self):
         self.fx = Fixture(); self.port = free_port()
-        d = tmpdir("fakeresolve-"); self.binary = os.path.join(d, "resolve")
-        shutil.copyfile(sys.executable, self.binary); os.chmod(self.binary, 0o755)
-        self.p = self.fx.profile(resolve_binary=self.binary, port=self.port)
+        self.p = self.fx.private_profile(spawnable=True, port=self.port)   # the "frozen runtime binary" is a copy of this interpreter
+        self.cap = self.p.cap; self.binary = self.cap["binary"]
         self.children = []
     def tearDown(self):
         for c in self.children:
             try: c.kill(); c.wait(timeout=10)
             except Exception: pass
 
-    def spawn(self, binary, env, cwd):
+    def spawn(self, binary, env, cwd, confinement=None):
+        self.confinement = confinement
         script = ("import socket,time\n"
                   "s=socket.socket(); s.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)\n"
                   f"s.bind(('127.0.0.1',{self.port})); s.listen(5)\n"
@@ -742,19 +877,64 @@ class Launcher(unittest.TestCase):
     def args(self, **over):
         a = {"authority": self.p.src_path, "policy": self.p.pol_path, "worker": WORKER_PATH, "session": self.p.session_path,
              "session_sha256": self.p.session_sha, "out": os.path.join(self.p.d, "runtime.json"), "timeout": 30, "poll": 0.1,
-             "cwd": os.path.dirname(self.binary)}
+             "cwd": os.path.dirname(self.binary), "host_boundary": self.cap["boundary_path"]}
         a.update(over); return a
 
+    def probe(self, **over):
+        """The REAL probe — real /proc, real sockets — with only the facts a synthetic capsule cannot supply overridden: the capsule
+        account's identity, the root ownership of the frozen runtime, and the confinement of a child this unprivileged test user is not
+        allowed to create. The REAL confinement (mount namespace, mask, capabilities, seccomp) is proved for real, in a real kernel
+        namespace, by tests/test_capsule_confinement.py."""
+        cap, port_pid = self.cap, over.get("resolve_pid")
+        class P(rw.SystemProbe):
+            def uid(self): return cap["pins"]["capsule_uid"]
+            def proc_uid(self, pid): return cap["pins"]["capsule_uid"]
+            def account(self, name):
+                return {"uid": cap["pins"]["capsule_uid"], "gid": cap["pins"]["capsule_gid"], "shell": "/usr/sbin/nologin"} if name == cap["pins"]["capsule_account"] else None
+            def stat_file(self, path):
+                st = super().stat_file(path)
+                if st and (path == cap["pins"]["broker_path"] or path.startswith(cap["pins"]["runtime_root"])): st["uid"] = 0
+                return st
+            def ns(self, pid, kind):
+                real = super().ns(pid, kind)
+                if kind == "mnt" and pid != os.getpid(): return NS["resolve_mnt"]
+                if kind == "mnt": return NS["worker_mnt"]
+                return real
+            def status_fields(self, pid):
+                st = super().status_fields(pid) or {}
+                if pid != os.getpid(): st.update({"NoNewPrivs": 1, "Seccomp": 2, "Seccomp_filters": 1, "CapBnd": 0, "CapEff": 0, "CapPrm": 0, "CapInh": 0, "CapAmb": 0})
+                return st
+            def mountinfo(self, pid):
+                rows = [{"mount_point": "/", "options": "rw,relatime", "fstype": "ext4", "source": "/dev/root", "super_options": "rw"}]
+                for ro in (self_p.gov["library"]["canonical_root"], cap["pins"]["runtime_root"]):
+                    rows.append({"mount_point": ro, "options": "ro,relatime", "fstype": "ext4", "source": "/dev/root", "super_options": "ro"})
+                if pid != os.getpid():
+                    for m in self_p.gov["evidence_mask"]:
+                        rows.append({"mount_point": m, "options": "ro,nosuid,nodev,noexec,relatime", "fstype": "tmpfs", "source": "tmpfs", "super_options": "ro"})
+                return rows
+            def statvfs_flag(self, path):
+                return rw.ST_RDONLY if any(path == r or path.startswith(r.rstrip("/") + "/") for r in (self_p.gov["library"]["canonical_root"], cap["pins"]["runtime_root"])) else 0
+        self_p = self.p
+        return P()
+
     def test_the_launcher_creates_a_session_the_worker_attests(self):
-        body, out, file_sha = launcher.launch(self.args(), spawn=self.spawn)
+        probe = self.probe()
+        body, out, file_sha = launcher.launch(self.args(), spawn=self.spawn, probe=probe)
+        self.assertEqual(self.confinement["evidence_mask"], self.p.gov["evidence_mask"], "the launcher must hand the sealed mask to the spawn")
+        self.assertEqual(body["execution_environment"], "DEDICATED_CAPSULE_V1")
+        self.assertEqual(body["host_primitive"], self.cap["pins"])
+        self.assertEqual(body["capsule_uid"], self.cap["pins"]["capsule_uid"])
+        self.assertNotEqual(body["resolve_mnt_ns"], body["worker_mnt_ns"])
+        self.assertEqual(body["resolve_seccomp"], 2); self.assertEqual(body["resolve_no_new_privs"], 1)
+        self.assertEqual(body["seccomp_filter_sha256"], SECCOMP_SHA)
+        self.assertEqual(body["evidence_mask"], sorted(self.p.gov["evidence_mask"]))
         self.assertEqual(body["schema"], rw.ATTESTATION_SCHEMA)
         self.assertEqual(body["session_id"], self.p.gov["session_id"])
         self.assertEqual(body["profile_sha256"], self.p.session_sha)
         self.assertEqual(body["script_server_port"], self.port)
         self.assertGreater(body["resolve_pid"], 0)
         self.assertEqual(file_sha, rw.sha(open(out, "rb").read()))
-        probe = rw.SystemProbe()                                                   # the REAL probe, real /proc, real sockets
-        ident = rw.attest_isolated_session(probe, self.p.gov, self.p.prov, body)
+        ident = rw.attest_isolated_session(probe, self.p.gov, self.p.prov, body)   # real /proc, real sockets, real child
         self.assertEqual(ident["pid"], body["resolve_pid"])
         self.assertIn(body["resolve_pid"], ident["endpoint_owner_pids"])
         self.assertGreater(ident["start_ticks"] / HZ, self.p.prov["seal_uptime"])
@@ -764,32 +944,33 @@ class Launcher(unittest.TestCase):
         self.assertEqual(len([1 for k, _ in entries if k == rw.NONCE_ENV_KEY]), 1)
 
     def test_the_nonce_never_reaches_the_record_or_the_worker(self):
-        body, out, _ = launcher.launch(self.args(), spawn=self.spawn)
+        probe = self.probe()
+        body, out, _ = launcher.launch(self.args(), spawn=self.spawn, probe=probe)
         raw = open(out, "rb").read()
-        nonce = dict(rw.SystemProbe().environ_entries(body["resolve_pid"]))[rw.NONCE_ENV_KEY]
+        nonce = dict(probe.environ_entries(body["resolve_pid"]))[rw.NONCE_ENV_KEY]
         self.assertEqual(rw.sha(nonce.encode()), body["nonce_sha256"])
         self.assertNotIn(nonce.encode(), raw, "the session nonce must never be written to disk")
-        ident = rw.attest_isolated_session(rw.SystemProbe(), self.p.gov, self.p.prov, body)
+        ident = rw.attest_isolated_session(probe, self.p.gov, self.p.prov, body)
         self.assertNotIn(nonce, json.dumps(ident), "the session nonce must never reach the worker's own identity block")
         self.assertEqual(ident["nonce_id"], body["nonce_sha256"][:16])
 
     def test_the_launcher_refuses_a_second_session_and_an_unaccepted_grant(self):
-        launcher.launch(self.args(), spawn=self.spawn)
+        launcher.launch(self.args(), spawn=self.spawn, probe=self.probe())
         with self.assertRaises(launcher.LaunchError) as cm:                        # Resolve already running
-            launcher.launch(self.args(out=os.path.join(self.p.d, "second.json")), spawn=self.spawn)
+            launcher.launch(self.args(out=os.path.join(self.p.d, "second.json")), spawn=self.spawn, probe=self.probe())
         self.assertIn("already running", str(cm.exception))
         bad = json.loads(open(self.p.src_path).read()); bad["status"] = "CANDIDATE_FOR_INDEPENDENT_REVIEW"; bad["approved_by"] = None
         path = os.path.join(self.p.d, "unaccepted.json"); open(path, "w").write(json.dumps(bad))
         with self.assertRaises(launcher.LaunchError) as cm:
-            launcher.launch(self.args(authority=path, out=os.path.join(self.p.d, "third.json")), spawn=self.spawn)
+            launcher.launch(self.args(authority=path, out=os.path.join(self.p.d, "third.json")), spawn=self.spawn, probe=self.probe())
         self.assertIn("not an accepted", str(cm.exception))
 
     def test_the_launcher_refuses_a_mutated_profile_and_a_wrong_pin(self):
         open(os.path.join(self.p.prov["profile_root"], "config", "smuggled"), "w").write("x\n")
-        with self.assertRaises(launcher.LaunchError) as cm: launcher.launch(self.args(), spawn=self.spawn)
+        with self.assertRaises(launcher.LaunchError) as cm: launcher.launch(self.args(), spawn=self.spawn, probe=self.probe())
         self.assertIn("SESSION_PROFILE_EXTRANEOUS", str(cm.exception))
         os.remove(os.path.join(self.p.prov["profile_root"], "config", "smuggled"))
-        with self.assertRaises(launcher.LaunchError) as cm: launcher.launch(self.args(session_sha256="0" * 64), spawn=self.spawn)
+        with self.assertRaises(launcher.LaunchError) as cm: launcher.launch(self.args(session_sha256="0" * 64), spawn=self.spawn, probe=self.probe())
         self.assertIn("SESSION_PROFILE_PIN_MISMATCH", str(cm.exception))
         self.assertEqual(self.children, [], "nothing may be launched before the chain verifies")
 
@@ -843,27 +1024,28 @@ class Runtime(unittest.TestCase):
         self.assertNotIn(NONCE, json.dumps(out) + json.dumps(a), "the session nonce must never appear in a reply or the journal")
 
     def test_the_worker_refuses_to_start_without_the_whole_chain(self):
-        d = tmpdir("start-"); sec = os.urandom(32)
+        d = tmpdir("start-"); sec = SECRET; sf = secret_file(d)
         def start(**kw):
             args = dict(policy_path=self.p.pol_path, policy_sha256=self.p.pol_sha, authority_path=self.p.src_path,
                         session_path=self.p.session_path, session_sha256=self.p.session_sha,
-                        attestation_path=self.p.att_path, attestation_sha256=self.p.att_sha)
+                        attestation_path=self.p.att_path, attestation_sha256=self.p.att_sha, secret_path=sf)
             args.update(kw)
             return rw.Worker(HOST, sec, os.path.join(d, uuid.uuid4().hex), fake_resolve, None, "PRODUCTION_READ",
                              args["policy_path"], args["policy_sha256"], args["authority_path"], args["session_path"],
-                             args["session_sha256"], args["attestation_path"], args["attestation_sha256"], FakeProbe(self.p))
+                             args["session_sha256"], args["attestation_path"], args["attestation_sha256"],
+                             FakeProbe(self.p, secret_path=sf), args["secret_path"], self.p.gov["host_primitive"])
         for kw in ({"session_path": None}, {"session_sha256": None}, {"policy_path": None}, {"authority_path": None},
-                   {"policy_sha256": None}, {"attestation_path": None}, {"attestation_sha256": None}):
+                   {"policy_sha256": None}, {"attestation_path": None}, {"attestation_sha256": None}, {"secret_path": None}):
             with self.assertRaises(SystemExit): start(**kw)
         for kw in ({"session_sha256": "0" * 64}, {"policy_sha256": "0" * 64}, {"attestation_sha256": "0" * 64}):
             with self.assertRaises(SystemExit): start(**kw)
         with self.assertRaises(SystemExit):
             rw.Worker(HOST, sec, os.path.join(d, "q"), fake_resolve, ("Prod Disk A", None), "PRODUCTION_READ",
                       self.p.pol_path, self.p.pol_sha, self.p.src_path, self.p.session_path, self.p.session_sha,
-                      self.p.att_path, self.p.att_sha, FakeProbe(self.p))
+                      self.p.att_path, self.p.att_sha, FakeProbe(self.p, secret_path=sf), sf, self.p.gov["host_primitive"])
         with self.assertRaises(SystemExit):
             rw.Worker(HOST, sec, os.path.join(d, "x"), fake_resolve, None, "QUALIFICATION_READ", None, None, None, None, None,
-                      self.p.att_path, self.p.att_sha, FakeProbe(self.p))
+                      self.p.att_path, self.p.att_sha, FakeProbe(self.p, secret_path=sf))
         self.assertEqual(start().identity["read_profile"], "PRODUCTION_READ")
 
     def test_production_read_is_structurally_linux_and_vidnux_only(self):
@@ -872,20 +1054,20 @@ class Runtime(unittest.TestCase):
         try:
             rw.platform.system = lambda: "Windows"
             with self.assertRaises(SystemExit):
-                rw.Worker(HOST, os.urandom(32), tmpdir("win-"), fake_resolve, None, "PRODUCTION_READ", self.p.pol_path,
+                rw.Worker(HOST, SECRET, tmpdir("win-"), fake_resolve, None, "PRODUCTION_READ", self.p.pol_path,
                           self.p.pol_sha, self.p.src_path, self.p.session_path, self.p.session_sha,
-                          self.p.att_path, self.p.att_sha, FakeProbe(self.p))
+                          self.p.att_path, self.p.att_sha, FakeProbe(self.p), secret_file(tmpdir("winsec-")), self.p.gov["host_primitive"])
         finally: rw.platform.system = orig
 
     def test_a_non_live_preview_policy_is_refused_at_startup(self):
-        d = tmpdir("prev-"); sp = os.path.join(d, "a.json"); pp = os.path.join(d, "p.json")
+        d = tmpdir("prev-"); sp = os.path.join(d, "a.json"); pp = os.path.join(d, "p.json"); sf = secret_file(d)
         open(sp, "w").write(json.dumps(record(self.fx.lib(), [P_A1], status="CANDIDATE_FOR_INDEPENDENT_REVIEW", approved_by=None)))
-        rc, js, _ = run([sys.executable, "-B", COMPILER, sp, pp, "--worker", WORKER_PATH, "--preview"])
+        rc, js, _ = run([sys.executable, "-B", COMPILER, sp, pp, "--worker", WORKER_PATH, "--preview", "--host-boundary", CAP["boundary_path"]])
         self.assertEqual(rc, 0); self.assertFalse(js["live"])
         with self.assertRaises(SystemExit) as cm:
-            rw.Worker(HOST, os.urandom(32), os.path.join(d, "w"), fake_resolve, None, "PRODUCTION_READ", pp,
+            rw.Worker(HOST, SECRET, os.path.join(d, "w"), fake_resolve, None, "PRODUCTION_READ", pp,
                       rw.sha(open(pp, "rb").read()), sp, self.p.session_path, self.p.session_sha,
-                      self.p.att_path, self.p.att_sha, FakeProbe(self.p))
+                      self.p.att_path, self.p.att_sha, FakeProbe(self.p, secret_path=sf), sf, self.p.gov["host_primitive"])
         self.assertIn("AUTHORITY_NOT_ACCEPTED", str(cm.exception))
 
     def test_any_link_edited_after_start_refuses_the_next_operation(self):
@@ -999,7 +1181,7 @@ class DeploymentBinding(unittest.TestCase):
     def bind(self, extra=(), **kw):
         args = {"--facade-dir": FACADE, "--facade-manifest": FACADE_MANIFEST, "--worker": WORKER_PATH,
                 "--authority": self.p.src_path, "--policy": self.p.pol_path, "--session": self.p.session_path,
-                "--attestation": self.p.att_path}
+                "--attestation": self.p.att_path, "--host-boundary": self.p.cap["boundary_path"]}
         args.update(kw)
         cmd = [sys.executable, "-B", BINDER]
         for k, v in args.items(): cmd += [k, v]
@@ -1041,7 +1223,8 @@ class DeploymentBinding(unittest.TestCase):
         rc, js, _ = self.bind(extra=("--pre-launch",), **{"--attestation": self.p.att_path})
         self.assertEqual(rc, 0, "a pre-launch verification is legitimate before a session exists")
         cmd = [sys.executable, "-B", BINDER, "--facade-dir", FACADE, "--facade-manifest", FACADE_MANIFEST, "--worker", WORKER_PATH,
-               "--authority", self.p.src_path, "--policy", self.p.pol_path, "--session", self.p.session_path]
+               "--authority", self.p.src_path, "--policy", self.p.pol_path, "--session", self.p.session_path,
+               "--host-boundary", self.p.cap["boundary_path"]]
         rc, js, _ = run(cmd)
         self.assertEqual(rc, 1); self.assertIn("attestation.provided", [f["check"] for f in js["failures"]])
         open(os.path.join(self.p.prov["profile_root"], "config", ".dblist"), "a").write("Other Disk:/srv/other::::DISK\n")

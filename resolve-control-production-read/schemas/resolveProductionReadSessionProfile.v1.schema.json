@@ -1,7 +1,7 @@
 {
  "$schema": "https://json-schema.org/draft/2020-12/schema",
  "title": "vidtoolz.resolveProductionReadSessionProfile.v1",
- "description": "Sealed manifest of an isolated Resolve session profile: the link between an ACCEPTED production-read grant and one concrete Resolve process. Produced only by tools/generate_session_profile.py from an ACCEPTED authority record, its LIVE policy and the exact worker bytes. The profile directory it seals registers EXACTLY ONE Project Library — the authorized local Disk library — and its EXACT tree is described here, so identity never depends on interrogating a pre-existing handle. `governed` is deterministic (same inputs -> same governed_sha256) and is what the worker enforces; `provenance` records the runtime facts of this particular sealing, including the profile root's physical identity. The worker refuses unless: the manifest digest matches its command-line pin, governed_sha256 matches the governed block, the authority/policy/worker/facade digests match the ones it verified itself, the profile root is still the same physical directory, the profile tree on disk is EXACTLY the sealed tree plus at most the bounded volatile allowlist, no symlink exists anywhere under the root, the registration file is still exactly registration_line, and the live Resolve process was started strictly after seal_epoch by the launcher whose runtime attestation it also verifies.",
+ "description": "Sealed manifest of an isolated Resolve session profile: the link between an ACCEPTED production-read grant and one concrete Resolve process. Produced only by tools/generate_session_profile.py from an ACCEPTED authority record, its LIVE policy and the exact worker bytes. The profile directory it seals registers EXACTLY ONE Project Library \u2014 the authorized local Disk library \u2014 and its EXACT tree is described here, so identity never depends on interrogating a pre-existing handle. `governed` is deterministic (same inputs -> same governed_sha256) and is what the worker enforces; `provenance` records the runtime facts of this particular sealing, including the profile root's physical identity. The worker refuses unless: the manifest digest matches its command-line pin, governed_sha256 matches the governed block, the authority/policy/worker/facade digests match the ones it verified itself, the profile root is still the same physical directory, the profile tree on disk is EXACTLY the sealed tree plus at most the bounded volatile allowlist, no symlink exists anywhere under the root, the registration file is still exactly registration_line, and the live Resolve process was started strictly after seal_epoch by the launcher whose runtime attestation it also verifies.",
  "type": "object",
  "additionalProperties": false,
  "required": [
@@ -44,7 +44,12 @@
     "write_authority",
     "persistent_worker_authority",
     "external_scripting",
-    "project_open_law"
+    "project_open_law",
+    "execution_environment",
+    "host_primitive",
+    "caller_identity",
+    "evidence_mask",
+    "confinement"
    ],
    "properties": {
     "session_id": {
@@ -183,7 +188,7 @@
      "const": "read the project the human already opened; never LoadProject/OpenProject/SetCurrentProject/SetCurrentDatabase"
     },
     "tree": {
-     "description": "the EXACT sealed file set: relative path -> {sha256}. At every operation the worker enumerates the profile root and requires this set plus, at most, the bounded volatile allowlist — nothing else may exist.",
+     "description": "the EXACT sealed file set: relative path -> {sha256}. At every operation the worker enumerates the profile root and requires this set plus, at most, the bounded volatile allowlist \u2014 nothing else may exist.",
      "type": "object",
      "minProperties": 1,
      "additionalProperties": {
@@ -225,6 +230,163 @@
      "items": {
       "type": "string",
       "minLength": 1
+     }
+    },
+    "execution_environment": {
+     "const": "DEDICATED_CAPSULE_V1"
+    },
+    "host_primitive": {
+     "description": "the APPROVED dedicated-capsule host boundary, verbatim. Independent host review approved it on 2026-09-22 (review manifest 84f5bcbc\u2026, 31/31 verified). It is not descriptive: the worker re-derives every field from the running system before a production read is served, and again at every operation.",
+     "type": "object",
+     "additionalProperties": false,
+     "required": [
+      "execution_environment",
+      "capsule_account",
+      "capsule_uid",
+      "capsule_gid",
+      "broker_path",
+      "broker_sha256",
+      "runtime_root",
+      "runtime_manifest_sha256",
+      "resolve_binary_sha256",
+      "script_lib_relpath",
+      "script_lib_sha256",
+      "host_boundary_schema",
+      "host_review_manifest_sha256"
+     ],
+     "properties": {
+      "execution_environment": {
+       "const": "DEDICATED_CAPSULE_V1"
+      },
+      "capsule_account": {
+       "description": "the dedicated account the worker and Resolve run as; the operator cannot enter it",
+       "type": "string",
+       "minLength": 1
+      },
+      "capsule_uid": {
+       "type": "integer",
+       "minimum": 1
+      },
+      "capsule_gid": {
+       "type": "integer",
+       "minimum": 1
+      },
+      "broker_path": {
+       "description": "the root-owned zero-argument broker that drops into the capsule",
+       "type": "string",
+       "pattern": "^/"
+      },
+      "broker_sha256": {
+       "type": "string",
+       "pattern": "^[0-9a-f]{64}$"
+      },
+      "runtime_root": {
+       "description": "the FROZEN ROOT-OWNED Resolve runtime. Never /opt/resolve: the operator can rewrite that one.",
+       "type": "string",
+       "pattern": "^/"
+      },
+      "runtime_manifest_sha256": {
+       "type": "string",
+       "pattern": "^[0-9a-f]{64}$"
+      },
+      "resolve_binary_sha256": {
+       "type": "string",
+       "pattern": "^[0-9a-f]{64}$"
+      },
+      "script_lib_relpath": {
+       "description": "the scripting extension, relative to runtime_root; production loads THIS file directly and never runs the vendor loader, whose fallback order ends in /opt/resolve",
+       "type": "string",
+       "minLength": 1
+      },
+      "script_lib_sha256": {
+       "type": "string",
+       "pattern": "^[0-9a-f]{64}$"
+      },
+      "host_boundary_schema": {
+       "const": "vidtoolz.resolveDedicatedCapsuleHostBoundary.v1"
+      },
+      "host_review_manifest_sha256": {
+       "type": "string",
+       "pattern": "^[0-9a-f]{64}$"
+      }
+     }
+    },
+    "caller_identity": {
+     "description": "the account Hermes signs from, and the identity of the shared HMAC key. The key is owned by the operator and readable \u2014 never writable \u2014 by the capsule, so a compromised capsule cannot mint its own caller.",
+     "type": "object",
+     "additionalProperties": false,
+     "required": [
+      "operator_uid",
+      "hmac_key_id"
+     ],
+     "properties": {
+      "operator_uid": {
+       "type": "integer",
+       "minimum": 1000
+      },
+      "hmac_key_id": {
+       "description": "first 16 hex of sha256(key bytes); the worker recomputes it from the bytes it loaded",
+       "type": "string",
+       "pattern": "^[0-9a-f]{16}$"
+      },
+      "key_path": {
+       "type": "string",
+       "pattern": "^/"
+      }
+     }
+    },
+    "evidence_mask": {
+     "description": "absolute worker-evidence paths the capsule init covers with an empty read-only tmpfs in Resolve's own mount namespace: the journal, the replay guard, the evidence spool and the shared key. None of them may cover the authorized library, the frozen runtime or the sealed profile.",
+     "type": "array",
+     "minItems": 1,
+     "uniqueItems": true,
+     "items": {
+      "type": "string",
+      "pattern": "^/[^/].*$"
+     }
+    },
+    "confinement": {
+     "description": "the confinement the capsule init installs on the Resolve child before exec. The seccomp filter is what makes the evidence mask durable: without it a capsule-root process could simply unmount the mask or bind the real directory back in.",
+     "type": "object",
+     "additionalProperties": false,
+     "required": [
+      "seccomp_filter_sha256",
+      "seccomp_instructions",
+      "seccomp_filters",
+      "no_new_privs",
+      "capability_sets_empty",
+      "denied_syscalls",
+      "clone_namespace_flags_denied"
+     ],
+     "properties": {
+      "seccomp_filter_sha256": {
+       "type": "string",
+       "pattern": "^[0-9a-f]{64}$"
+      },
+      "seccomp_instructions": {
+       "type": "integer",
+       "minimum": 1
+      },
+      "seccomp_filters": {
+       "const": 1
+      },
+      "no_new_privs": {
+       "const": 1
+      },
+      "capability_sets_empty": {
+       "const": true
+      },
+      "denied_syscalls": {
+       "type": "array",
+       "minItems": 1,
+       "items": {
+        "type": "string"
+       }
+      },
+      "clone_namespace_flags_denied": {
+       "type": "integer",
+       "minimum": 1
+      }
      }
     }
    }

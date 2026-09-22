@@ -126,7 +126,7 @@ class ReviewerAttacks(unittest.TestCase):
                 self.assertIn(key, old, f"the reviewer's result {key} was not reproduced")
 
     def test_the_successor_refuses_the_duplicate_environment_clone_b_attack(self):
-        fx = T.Fixture(); p = fx.profile()
+        fx = T.Fixture(); p = fx.private_profile()
         handle = P.LeakHandle(fx.name, {"name": "Prod Project", "uuid": T.P_A1}, T.TLS, ["Prod Project", "Second"],
                               {"timelineFrameRate": "23.976", "vidtoolzLibraryMarker": P.B_ONLY})
         probe = T.FakeProbe(p)
@@ -147,7 +147,7 @@ class ReviewerAttacks(unittest.TestCase):
         finally: env.close()
 
     def test_the_successor_closes_the_other_seven_results(self):
-        fx = T.Fixture(); p = fx.profile()
+        fx = T.Fixture(); p = fx.private_profile()
         def refuse(fn, reason, label):
             try: fn()
             except rw.OpError as e:
@@ -159,18 +159,20 @@ class ReviewerAttacks(unittest.TestCase):
         binary = p.gov["resolve_binary"]["realpath"]
         data = bytearray(open(binary, "rb").read()); data[-1] ^= 1; open(binary, "wb").write(data)
         refuse(lambda: rw.attest_isolated_session(T.FakeProbe(p), p.gov, p.prov, p.att), "SESSION_EXECUTABLE_MISMATCH", "same_size_executable_mutation")
-        fx2 = T.Fixture(); p2 = fx2.profile()
+        fx2 = T.Fixture(); p2 = fx2.private_profile()
         open(os.path.join(p2.prov["profile_root"], "config", "unexpected-runtime-state"), "w").write("unsealed\n")
         refuse(lambda: rw.verify_profile_tree(p2.prov, p2.gov), "SESSION_PROFILE_EXTRANEOUS", "unsealed_extra_profile_file")
         parent = tempfile.mkdtemp(prefix="succ-rel-"); T.TMP.append(parent)
         rc, js, _ = T.run([sys.executable, "-B", T.GENERATOR, "--authority", p2.src_path, "--policy", p2.pol_path,
                            "--worker", T.WORKER_PATH, "--source-config", p2.cfg, "--profile-root", "relative-profile",
-                           "--out", os.path.join(parent, "s.json"), "--resolve-binary", p2.binary], cwd=parent)
+                           "--out", os.path.join(parent, "s.json"), "--resolve-binary", p2.binary,
+                           "--host-boundary", p2.cap["boundary_path"]] + T.MASK(p2), cwd=parent)
         self.assertEqual(rc, 2, "relative_profile_root must be refused"); self.assertIn("absolute", js["message"])
         real = os.path.join(parent, "real"); link = os.path.join(parent, "link"); os.mkdir(real); os.symlink(real, link)
         rc, js, _ = T.run([sys.executable, "-B", T.GENERATOR, "--authority", p2.src_path, "--policy", p2.pol_path,
                            "--worker", T.WORKER_PATH, "--source-config", p2.cfg, "--profile-root", link,
-                           "--out", os.path.join(real, "session.json"), "--resolve-binary", p2.binary])
+                           "--out", os.path.join(real, "session.json"), "--resolve-binary", p2.binary,
+                           "--host-boundary", p2.cap["boundary_path"]] + T.MASK(p2))
         self.assertEqual(rc, 2, "symlink_profile_root must be refused")
         self.assertFalse(os.path.isfile(os.path.join(real, "session.json")), "no manifest may be written inside the profile")
         refuse(lambda: rw.attest_isolated_session(T.FakeProbe(p2, unattributed={"222"}), p2.gov, p2.prov, p2.att),
