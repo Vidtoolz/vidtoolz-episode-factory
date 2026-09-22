@@ -319,7 +319,8 @@ class FakeProbe(rw.SystemProbe):
 
 class Env:
     """Real candidate worker over the frozen client: accepted chain + sealed profile + runtime attestation + injected fake Resolve."""
-    def __init__(self, st, profile, probe=None, mode="PRODUCTION_READ", require_library=None, session_sha=None, api=None, att_sha=None):
+    def __init__(self, st, profile, probe=None, mode="PRODUCTION_READ", require_library=None, session_sha=None, api=None, att_sha=None,
+                 wstate=None, evidence_final=None):
         self.d = tmpdir("env-"); self.profile = profile
         self.state_path = os.path.join(self.d, "state.json"); self.set_state(st)
         os.environ["VRC_FAKE_STATE"] = self.state_path
@@ -331,7 +332,8 @@ class Env:
         self.secret = SECRET; self.sf = os.path.join(self.d, "secret")
         open(self.sf, "wb").write(self.secret); os.chmod(self.sf, 0o640)
         self.probe.secret_path = getattr(self.probe, "secret_path", None) or self.sf   # the key the worker must find operator-owned
-        self.port = free_port(); self.wstate = os.path.join(self.d, "wstate")
+        self.port = free_port(); self.wstate = wstate or os.path.join(self.d, "wstate")
+        self.evidence_final = evidence_final
         prod = mode == "PRODUCTION_READ"
         try:
             self.worker = rw.Worker(HOST, self.secret, self.wstate, api or fake_resolve, require_library, mode,
@@ -339,7 +341,7 @@ class Env:
                                     profile.src_path if prod else None, profile.session_path if prod else None,
                                     (session_sha or profile.session_sha) if prod else None,
                                     profile.att_path if prod else None, (att_sha or profile.att_sha) if prod else None, self.probe,
-                                    self.sf if prod else None, profile.gov["host_primitive"] if prod else None)
+                                    self.sf if prod else None, profile.gov["host_primitive"] if prod else None, evidence_final)
         except BaseException:
             self.restore(); raise
         self.srv = rw.ThreadingHTTPServer(("127.0.0.1", self.port), rw.Handler); self.srv.worker = self.worker

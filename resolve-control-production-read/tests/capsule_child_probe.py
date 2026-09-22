@@ -43,6 +43,13 @@ def main(masked, worker_pid):
         with open("/proc/%d/mem" % worker_pid, "rb") as fh: fh.seek(0); fh.read(1)
         out["read_worker_memory"] = "SUCCEEDED"
     except OSError as e: out["read_worker_memory"] = "errno:" + str(e.errno)
+    # the governed artifacts a compromised Resolve would most want to rewrite
+    for name in ("AUTHORITY.json", "policy.json", "session-profile.json", "journal.jsonl", "final/sealed.jsonl"):
+        key = "replace_" + name.replace("/", "_").replace(".", "_")
+        try:
+            with open(os.path.join(masked, name), "wb") as fh: fh.write(b"REWRITTEN-BY-RESOLVE")
+            out[key] = "SUCCEEDED"
+        except OSError as e: out[key] = "errno:" + str(e.errno)
     out["mountinfo_at_mask"] = [l.strip() for l in open("/proc/self/mountinfo") if (" " + masked + " ") in l]
     out["ordinary_work_still_possible"] = os.path.isdir("/") and len(os.listdir("/")) > 0
     print(json.dumps(out), flush=True)

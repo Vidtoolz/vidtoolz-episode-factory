@@ -22,9 +22,9 @@ suite() {
   echo "== reviewer-attack closure (rejected 4ae35e7c bytes vs successor)"; run test_reviewer_attacks_regression.py . tests/test_reviewer_attacks_regression.py 5
   echo "== prior-bypass regression (rejected 59a5593d bytes vs successor)"; run test_prior_bypass_regression.py . tests/test_prior_bypass_regression.py 4
   echo "== dedicated-capsule laws (host primitive, pinned scripting runtime, shared key, confinement, governed stop)"
-  run test_dedicated_capsule.py . tests/test_dedicated_capsule.py 60
+  run test_dedicated_capsule.py . tests/test_dedicated_capsule.py 81
   echo "== real-kernel confinement (seccomp filter in this process; whole capsule under rootlesskit)"
-  run test_capsule_confinement.py . tests/test_capsule_confinement.py 19
+  run test_capsule_confinement.py . tests/test_capsule_confinement.py 20
   echo "== qualification regression (frozen Phase 1 tests vs candidate worker)"
   local S; S=$(mktemp -d); mkdir -p "$S/worker" "$S/tests"; cp worker/resolve_worker.py "$S/worker/"; ln -s "$VRC_PHASE1_ROOT/vrc" "$S/vrc"; cp "$VRC_PHASE1_ROOT"/tests/*.py "$S/tests/"
   run frozen/test_phase1.py "$S" tests/test_phase1.py 22; run frozen/test_repairs.py "$S" tests/test_repairs.py 20; rm -rf "$S"

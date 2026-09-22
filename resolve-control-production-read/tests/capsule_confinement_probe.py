@@ -61,6 +61,12 @@ def main(base):
     open(os.path.join(lib, "Project.db"), "wb").write(b"SQLite format 3\0")
     journal = os.path.join(ev, "journal.jsonl"); open(journal, "w").write('{"event":"WORKER_START"}\n')
     open(os.path.join(ev, "session.key"), "w").write("SHARED-KEY-THE-CHILD-MUST-NEVER-SEE")
+    os.makedirs(os.path.join(ev, "final"), exist_ok=True)
+    open(os.path.join(ev, "final", "sealed.jsonl"), "w").write('{"event":"SESSION_STOPPED"}\n')
+    for name in ("AUTHORITY.json", "policy.json", "session-profile.json"):
+        open(os.path.join(ev, name), "w").write('{"governed":"artifact the child must not be able to replace"}\n')
+    originals = {n: open(os.path.join(ev, n), "rb").read() for n in
+                 ("AUTHORITY.json", "policy.json", "session-profile.json", "journal.jsonl", "session.key")}
     bind_ro(lib); bind_ro(runtime)
 
     r, w = os.pipe()
@@ -99,6 +105,12 @@ def main(base):
         open(journal, "a").write('{"event":"OP"}\n'); out["worker_journal_writable"] = True
     except OSError as e: out["worker_journal_writable"] = "errno:%d" % e.errno
     out["worker_sees_key"] = os.path.isfile(os.path.join(ev, "session.key"))
+    # the journal legitimately grows: the WORKER appends to it above. What must never happen is the CHILD's bytes appearing in it.
+    out["governed_artifacts_unchanged"] = {n: open(os.path.join(ev, n), "rb").read() == b
+                                           for n, b in originals.items() if n != "journal.jsonl"}
+    jr = open(journal, "rb").read()
+    out["journal_grew_by_worker_only"] = jr.startswith(originals["journal.jsonl"]) and b"REWRITTEN-BY-RESOLVE" not in jr
+    out["sealed_final_unchanged"] = open(os.path.join(ev, "final", "sealed.jsonl"), "rb").read() == b'{"event":"SESSION_STOPPED"}\n' 
     out["library_readonly_for_worker"] = bool(probe.statvfs_flag(lib) & rw.ST_RDONLY)
     try:
         open(os.path.join(lib, "written-by-worker"), "w").write("x"); out["worker_can_write_library"] = "SUCCEEDED"

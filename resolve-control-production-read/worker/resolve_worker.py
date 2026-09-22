@@ -1149,7 +1149,7 @@ class ResolvePool:
 class Worker:
     def __init__(self, host_id, secret, state_dir, api, require_library=None, mode="QUALIFICATION_READ", policy_path=None, policy_sha256=None,
                  authority_path=None, session_path=None, session_sha256=None, attestation_path=None, attestation_sha256=None, probe=None,
-                 secret_path=None, capsule_pins=None):
+                 secret_path=None, capsule_pins=None, evidence_final=None):
         hn = socket.gethostname()
         if hn.lower() != host_id.lower(): raise SystemExit(f"HOST_ID_MISMATCH: --host-id {host_id} but hostname is {hn}")
         self.host_id, self.secret, self.state_dir, self.api = host_id, secret, state_dir, api
@@ -1163,6 +1163,7 @@ class Worker:
         self.pins = capsule_pins or CAPSULE_PINS     # likewise: the approved capsule boundary, injectable only by an offline suite
         self.session_identity, self._policy_cache, self._caller = None, None, None
         self.secret_path, self.capsule, self.host_cache = secret_path, None, {}
+        self.evidence_final = evidence_final     # finalized, operator-READABLE, operator-NON-WRITABLE evidence (0440, setgid dir)
         self.stop_pending = threading.Event()
         self.stop_signal = lambda pid, sig: os.kill(pid, sig)          # the ONLY signal this worker ever sends
         self.stop_exit = lambda: threading.Timer(0.75, os._exit, [0]).start()   # the capsule init tears the capsule down when the worker exits
@@ -1193,7 +1194,7 @@ class Worker:
                          "worker_started_at": now_iso(), "worker_version": WORKER_VERSION, "protocol": PROTOCOL,
                          "read_profile": mode, "production_policy_sha256": policy_sha256, "session_profile_sha256": session_sha256,
                          "runtime_attestation_sha256": attestation_sha256, "execution_environment": CAPSULE_MODE if mode == "PRODUCTION_READ" else None,
-                         "capsule": self.capsule, "caller": self._caller,
+                         "capsule": self.capsule, "caller": self._caller, "evidence_final": evidence_final,
                          "worker_sha256": self.own_sha256, "derived_from": DERIVED_FROM}
         self.replay = ReplayGuard(os.path.join(state_dir, "replay.jsonl"))
         self.pool = ResolvePool()
@@ -1346,6 +1347,27 @@ class Worker:
         except OpError as e: self._deny(a, "project", e)
         a.update(decision="ALLOWED", stage="project", project_uuid=proj["uuid"])
 
+    def finalize_evidence(self, session_id, reason):
+        """Seal this session's journal into the finalized evidence directory, 0440, once. The directory is setgid `vrc-capsule:vidtoolz`
+        on the approved host, so the operator can READ the sealed record and cannot rewrite it, and it is one of the paths masked out of
+        Resolve's mount namespace, so the Resolve side of the capsule cannot reach it at all. A finalization that would overwrite an
+        existing record refuses rather than replacing it: authoritative evidence is append-only by construction."""
+        if not self.evidence_final: return {"finalized": False, "reason": "no finalized-evidence directory configured"}
+        name = f"{session_id or 'no-session'}.{self.identity['worker_instance_id']}.jsonl"
+        dest = os.path.join(self.evidence_final, name)
+        try:
+            with self.jlock:
+                self.journal.flush(); os.fsync(self.journal.fileno())
+                data = open(os.path.join(self.state_dir, "journal.jsonl"), "rb").read()
+            fd = os.open(dest, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o440)
+            with os.fdopen(fd, "wb") as fh: fh.write(data); fh.flush(); os.fsync(fh.fileno())
+            os.chmod(dest, 0o440)
+            st = os.stat(dest)
+            return {"finalized": True, "path": dest, "bytes": len(data), "sha256": sha(data),
+                    "mode": oct(st.st_mode & 0o777), "uid": st.st_uid, "gid": st.st_gid, "reason": reason}
+        except OSError as e:
+            return {"finalized": False, "reason": f"{type(e).__name__}: {e.errno}", "path": dest}
+
     def session_stop(self, env, a):
         """Governed STOP. The only non-read operation this worker exposes, and it is not a Resolve operation: it never attaches, never
         calls the scripting API and takes no parameters, so it can name no process. The target is the pid the launcher attested, and the
@@ -1375,11 +1397,14 @@ class Worker:
         self.journal_event({"event": "SESSION_STOPPED", "resolve_pid": pid, "resolve_start_ticks": ticks, "signal": "SIGKILL",
                             "resolve_exited": gone, "session_id": ident.get("session_id"), "nonce_id": ident.get("nonce_id"),
                             "worker_instance_id": self.identity["worker_instance_id"], "caller": env.get("caller"), "authorization": dict(a)})
+        final = self.finalize_evidence(ident.get("session_id"), "governed stop")
+        self.journal_event({"event": "EVIDENCE_FINALIZED", **final})
         self.stop_exit()
         return {"resolve": {"available": False, "session_stopped": True, "process": None, "external_scripting_mode": external_scripting_mode(), "authorization": a},
                 "project": None, "timeline": None,
                 "result": {"stopped": True, "resolve_pid": pid, "signal": "SIGKILL", "resolve_exited": gone,
-                           "worker_exit": "scheduled", "capsule_teardown": "the capsule init exits with the worker"}}
+                           "worker_exit": "scheduled", "capsule_teardown": "the capsule init exits with the worker",
+                           "evidence": {k: v for k, v in final.items() if k != "path"}}}
 
     def _snapshot_for(self, a):
         """One Resolve attachment per operation. In PRODUCTION_READ the whole chain and the session are attested first, so nothing is read
@@ -1544,6 +1569,7 @@ def main():
     ap.add_argument("--production-session-sha256", action=Once, help="PRODUCTION_READ: pinned sha256 of the session profile manifest FILE; re-verified at every operation")
     ap.add_argument("--production-runtime-attestation", action=Once, help="PRODUCTION_READ: path to the runtime session attestation written by tools/launch_isolated_session.py when it created the isolated Resolve session")
     ap.add_argument("--production-runtime-attestation-sha256", action=Once, help="PRODUCTION_READ: pinned sha256 of the runtime attestation FILE; re-verified at every operation")
+    ap.add_argument("--evidence-final", action=Once, help="PRODUCTION_READ: directory the session journal is sealed into at the governed stop, 0440; on the approved host it is setgid vrc-capsule:vidtoolz, so the operator can read it and cannot rewrite it")
     a = ap.parse_args()
     if a.mode is None: a.mode = "QUALIFICATION_READ"
     if a.bind != BIND: raise SystemExit("LOOPBACK_ONLY: worker binds 127.0.0.1 only; refusing --bind " + a.bind)
@@ -1556,7 +1582,8 @@ def main():
     srv = ThreadingHTTPServer((BIND, a.port), Handler); srv.worker = Worker(a.host_id, secret, a.state_dir, load_production_api(a.mode), req, a.mode, a.production_policy, a.production_policy_sha256,
                                                                        a.production_authority, a.production_session, a.production_session_sha256,
                                                                        a.production_runtime_attestation, a.production_runtime_attestation_sha256,
-                                                                       secret_path=os.path.abspath(a.secret_file))
+                                                                       secret_path=os.path.abspath(a.secret_file),
+                                                                       evidence_final=a.evidence_final and os.path.abspath(a.evidence_final))
     anchor = None
     if a.exit_with_session:
         anchor = find_session_anchor()

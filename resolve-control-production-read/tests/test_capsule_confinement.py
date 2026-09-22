@@ -115,6 +115,17 @@ class RealCapsule(unittest.TestCase):
                      "clone_with_ns_flags", "setns", "pivot_root"):
             self.assertEqual(c[call]["errno"], errno.EPERM, f"{call} must be refused: it would undo the evidence mask")
 
+    def test_the_child_cannot_replace_any_governed_artifact(self):
+        c = self.out["child"]
+        for key in ("replace_AUTHORITY_json", "replace_policy_json", "replace_session-profile_json",
+                    "replace_journal_jsonl", "replace_final_sealed_jsonl"):
+            self.assertNotEqual(c[key], "SUCCEEDED", key)
+            self.assertTrue(c[key].startswith("errno:"), f"{key} = {c[key]}")
+        self.assertTrue(all(self.out["governed_artifacts_unchanged"].values()), self.out["governed_artifacts_unchanged"])
+        self.assertIs(self.out["journal_grew_by_worker_only"], True,
+                      "the journal may only grow by the worker's own appends, never carry a byte the child wrote")
+        self.assertIs(self.out["sealed_final_unchanged"], True, "sealed final evidence must survive the child byte for byte")
+
     def test_the_child_cannot_reach_into_the_worker_process(self):
         c = self.out["child"]
         self.assertEqual(c["ptrace_worker"]["errno"], errno.EPERM)

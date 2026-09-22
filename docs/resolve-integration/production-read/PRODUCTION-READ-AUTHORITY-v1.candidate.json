@@ -7,7 +7,7 @@
   "acceptance_record": null,
   "worker_identity": {
     "component": "resolve-control-plane production-read candidate 0.5.0 (dedicated capsule, attested isolated session)",
-    "worker_sha256": "6799b3c05b2ebd97a2b5ff63257b9ff20f3f46dc5b02b7657887133ccef0fd71",
+    "worker_sha256": "b497865862dd0705257743de4897013bdea620d3f80e2cb519fd49f4a17d22b4",
     "commit": "branch claude/resolve-production-read-authority-20260922 (successor candidate to 60e8bcd8; see git)"
   },
   "facade_identity": {

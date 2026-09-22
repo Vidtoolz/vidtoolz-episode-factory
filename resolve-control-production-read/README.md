@@ -11,7 +11,7 @@ The repair is not more hashing. It is a **host boundary**, approved by independe
 operator cannot enter, a root-owned zero-argument broker, and a frozen root-owned copy of the Resolve runtime. This candidate is the
 application side of that boundary — the part the host review explicitly left open.
 
-- candidate worker sha256: `6799b3c05b2ebd97a2b5ff63257b9ff20f3f46dc5b02b7657887133ccef0fd71`
+- candidate worker sha256: `b497865862dd0705257743de4897013bdea620d3f80e2cb519fd49f4a17d22b4`
 - accepted Hermes facade `8e068fea2d4df5b9709c387f6444502bd7bc2091` — **unchanged**, not a line of it is touched here
 - frozen Resolve Authority v1.20, frozen Phase 1, and the installed host primitive: **unchanged**
 
@@ -24,6 +24,7 @@ application side of that boundary — the part the host review explicitly left o
 | **Cross-account transport** | Hermes runs as the operator; the worker now runs as a different account. | The shared HMAC key is owned by the operator, granted to the capsule **read-only** by ACL, and its identity (`sha256(key)[:16]`) is named in the accepted authority. A key the capsule could rewrite, own, or substitute refuses. `tools/prepare_session_key.py` places and verifies it. |
 | **Worker evidence inside one uid** | Worker and Resolve share the capsule account, so file modes alone protect nothing: a compromised Resolve could rewrite the journal or read the key. | The capsule init starts Resolve in its **own mount namespace** with every sealed evidence path masked by an empty read-only tmpfs, an **empty capability bounding set**, `no_new_privs`, and a **seccomp filter** that refuses `mount`, `umount2`, `unshare`, `setns`, `pivot_root`, `chroot`, the new mount API, `clone` with any namespace flag, `ptrace` and cross-process memory access. The worker re-reads those facts from `/proc` at every operation. |
 | **No way to end a session** | The operator cannot signal, enter or inspect the capsule — by design — and therefore could not stop a running session. | A governed `session_stop`: an authenticated request on the same loopback transport, gated by the *whole* production chain, that takes no parameters and can name no process. The worker SIGKILLs the pid the launcher attested and exits; the capsule init exits with it and pid 1 of the capsule's pid namespace takes the capsule down. No new host authority, no privileged helper, no sudo rule. |
+| **Evidence the operator can trust** | Nothing sealed the session record, so the only copy lived inside the capsule. | The governed stop seals the session journal into the finalized evidence directory at mode `0440`, once — a second finalization refuses rather than replacing it. On the approved host that directory is setgid `vrc-capsule:vidtoolz`, so the operator can read the sealed record and cannot rewrite it, and it is one of the paths masked out of Resolve's namespace. |
 
 The nine read operations, the accepted facade and the frozen Phase 1 worker are unchanged. `session_stop` is not a Resolve operation:
 it never attaches, and the accepted facade does not expose it.
@@ -68,9 +69,9 @@ Mikko's normal Resolve session.
 - `tools/compile_production_read_policy.py`, `tools/generate_session_profile.py`, `tools/launch_isolated_session.py`,
   `tools/verify_deployment_binding.py`, `tools/prepare_session_key.py`, `tools/session_stop.py`.
 - `schemas/` — authority, session profile and runtime attestation schemas.
-- `tests/test_production_read.py` (76), `tests/test_dedicated_capsule.py` (60), `tests/test_capsule_confinement.py` (19),
+- `tests/test_production_read.py` (76), `tests/test_dedicated_capsule.py` (81), `tests/test_capsule_confinement.py` (20),
   `tests/test_reviewer_attacks_regression.py` (5), `tests/test_prior_bypass_regression.py` (4), plus the FROZEN Phase 1 suites
-  (22 + 20) run unchanged against these bytes. **206 tests**, `./run-tests.sh` (+ `--self-test`).
+  (22 + 20) run unchanged against these bytes. **228 tests**, `./run-tests.sh` (+ `--self-test`).
 - Governance: `../docs/resolve-integration/production-read/PRODUCTION-READ-AUTHORITY-v1.candidate.json` — deny-all, CANDIDATE,
   null approver, `library: null`, `projects: []`, placeholder key identity. It authorizes nothing.
 

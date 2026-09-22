@@ -15,11 +15,12 @@ It reuses the one harness in test_production_read.py: real candidate bytes, the 
 temp-directory libraries, a deterministic process probe and a synthetic capsule — all injected explicitly. The REAL kernel proof of the
 confinement (a real mount namespace, a real mask, real capability drops, a real seccomp filter) is in test_capsule_confinement.py.
 """
-import json, os, shutil, subprocess, sys, unittest
+import http.client, json, os, shutil, subprocess, sys, time, unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(HERE)
 sys.path[:0] = [HERE]
 import test_production_read as T
+import test_prior_bypass_regression as P
 import resolve_worker as rw
 import vrc_capsule_confine as confine_mod
 import compile_production_read_policy as comp
@@ -591,6 +592,253 @@ class GovernedStop(unittest.TestCase):
         self.assertIn('"op": "session_stop"', tool)
         self.assertNotIn("os.kill", tool); self.assertNotIn("SIGKILL", tool.split('"""')[2])
         self.assertIn("hmac.new", tool)
+
+
+class Hmac(unittest.TestCase):
+    """APP-15..APP-19. The worker now runs as a DIFFERENT account from the caller, so the HMAC is no longer a formality inside one
+    trust domain — it is the account boundary. The frozen Phase 1 transport is reused unchanged; this matrix proves it across the
+    capsule boundary, against the capsule worker's own bytes."""
+    def setUp(self):
+        self.cap = T.synthetic_capsule(); self.fx = T.Fixture()
+        self.p = self.fx.profile(capsule=self.cap, mask=self.cap["mask"]); self.envs = []
+
+    def tearDown(self):
+        for e in self.envs:
+            try: e.close()
+            except Exception: pass
+
+    def env(self, **kw):
+        e = T.Env(self.fx.st(), self.p, **kw); self.envs.append(e); return e
+
+    def post(self, e, body=None, secret=None, ts=None, nonce=None, sig=None, path="/v1/op", send=None):
+        body = body if body is not None else json.dumps(
+            {"protocol": "vrc.v1", "op": "identify", "target_host": T.HOST, "caller": "hermes", "deadline_ms": 20000}).encode()
+        ts = ts or str(int(time.time())); nonce = nonce or os.urandom(16).hex()
+        sig = sig or rw.sign(secret or e.secret, ts, nonce, "POST", path, body)
+        c = http.client.HTTPConnection("127.0.0.1", e.port, timeout=10)
+        c.request("POST", path, send if send is not None else body,
+                  {"Content-Type": "application/json", "X-VRC-Timestamp": ts, "X-VRC-Nonce": nonce, "X-VRC-Signature": sig})
+        r = c.getresponse(); return r.status, json.loads(r.read() or b"{}"), nonce, ts, sig, body
+
+    def test_a_correctly_signed_request_is_served(self):
+        st, out, *_ = self.post(self.env())
+        self.assertEqual(st, 200, out); self.assertTrue(out["ok"])
+
+    def test_a_bad_mac_is_denied(self):
+        e = self.env()
+        st, out, *_ = self.post(e, sig="0" * 64)
+        self.assertEqual(st, 401); self.assertEqual(out["error"]["code"], "AUTHENTICATION_FAILED")
+
+    def test_a_wrong_key_is_denied(self):
+        e = self.env()
+        st, out, *_ = self.post(e, secret=os.urandom(32).hex().encode())
+        self.assertEqual(st, 401); self.assertEqual(out["error"]["code"], "AUTHENTICATION_FAILED")
+
+    def test_a_skewed_request_is_denied_in_both_directions(self):
+        e = self.env()
+        for ts in (str(int(time.time()) - 600), str(int(time.time()) + 600)):
+            st, out, *_ = self.post(e, ts=ts)
+            self.assertEqual(st, 401, ts); self.assertEqual(out["error"]["code"], "AUTHENTICATION_FAILED")
+
+    def test_a_replayed_nonce_is_denied(self):
+        e = self.env()
+        st, out, nonce, ts, sig, body = self.post(e)
+        self.assertEqual(st, 200)
+        st2, out2, *_ = self.post(e, body=body, nonce=nonce, ts=ts, sig=sig)
+        self.assertEqual(st2, 401); self.assertEqual(out2["error"]["code"], "REPLAY_DETECTED")
+
+    def test_a_modified_body_is_denied(self):
+        e = self.env()
+        body = json.dumps({"protocol": "vrc.v1", "op": "identify", "target_host": T.HOST, "caller": "hermes", "deadline_ms": 20000}).encode()
+        tampered = body.replace(b'"identify"', b'"get_media_pool_summary"')
+        self.assertNotEqual(body, tampered)
+        st, out, *_ = self.post(e, body=body, send=tampered)
+        self.assertEqual(st, 401); self.assertEqual(out["error"]["code"], "AUTHENTICATION_FAILED")
+
+    def test_a_cross_session_replay_is_denied_by_the_durable_guard(self):
+        """The replay guard is on disk, so a nonce captured from one worker instance cannot be replayed into the next one that owns
+        the same state — which is exactly what a captured capsule session would offer an attacker."""
+        shared = os.path.join(T.tmpdir("shared-state-"), "wstate")
+        e1 = self.env(wstate=shared)
+        st, out, nonce, ts, sig, body = self.post(e1)
+        self.assertEqual(st, 200)
+        e1.close(); self.envs.remove(e1)
+        e2 = self.env(wstate=shared)
+        self.assertGreater(e2.worker.replay.loaded, 0, "the new instance must load the previous instance's nonces")
+        st2, out2, *_ = self.post(e2, body=body, nonce=nonce, ts=ts, sig=sig)
+        self.assertEqual(st2, 401); self.assertEqual(out2["error"]["code"], "REPLAY_DETECTED")
+
+    def test_a_request_for_another_host_is_denied_even_when_perfectly_signed(self):
+        e = self.env()
+        body = json.dumps({"protocol": "vrc.v1", "op": "identify", "target_host": "PRESTO", "caller": "hermes", "deadline_ms": 20000}).encode()
+        st, out, *_ = self.post(e, body=body)
+        self.assertEqual(out["error"]["code"], "TARGET_MISMATCH", out)
+
+    def test_a_request_bound_to_another_worker_session_is_denied(self):
+        e = self.env()
+        body = json.dumps({"protocol": "vrc.v1", "op": "get_current_project", "target_host": T.HOST, "caller": "hermes",
+                           "deadline_ms": 20000, "expected": {"worker_instance_id": "0" * 32}}).encode()
+        st, out, *_ = self.post(e, body=body)
+        self.assertEqual(out["error"]["code"], "WORKER_GENERATION_MISMATCH", out)
+
+    def test_an_unauthenticated_request_is_refused_before_anything_is_read(self):
+        e = self.env()
+        c = http.client.HTTPConnection("127.0.0.1", e.port, timeout=10)
+        c.request("POST", "/v1/op", b"{}", {"Content-Type": "application/json"})
+        r = c.getresponse(); out = json.loads(r.read())
+        self.assertEqual(r.status, 401); self.assertEqual(out["error"]["code"], "AUTHENTICATION_FAILED")
+
+    def test_key_material_never_reaches_the_journal_or_a_response(self):
+        e = self.env()
+        st, out, *_ = self.post(e)
+        blob = json.dumps(out) + json.dumps(e.journal())
+        self.assertNotIn(e.secret.decode(), blob, "the shared key must never be echoed or journaled")
+        self.assertNotIn(T.SECRET.decode(), blob)
+        self.assertIn(e.worker._caller["hmac_key_id"], json.dumps(e.worker.identity), "only the key IDENTITY is reported")
+
+    def test_the_transport_is_loopback_only(self):
+        self.assertEqual(rw.BIND, "127.0.0.1")
+        src = open(os.path.join(ROOT, "worker", "resolve_worker.py"), encoding="utf-8").read()
+        self.assertIn('raise SystemExit("LOOPBACK_ONLY:', src)
+        self.assertIn("ThreadingHTTPServer((BIND, a.port)", src)
+
+
+class Evidence(unittest.TestCase):
+    """APP-24..APP-27. Worker and Resolve are the same account, so the protection cannot be file modes alone."""
+    def setUp(self):
+        self.cap = T.synthetic_capsule(); self.fx = T.Fixture()
+        self.p = self.fx.profile(capsule=self.cap, mask=self.cap["mask"])
+        self.final = T.tmpdir("final-"); self.envs = []
+
+    def tearDown(self):
+        for e in self.envs:
+            try: e.close()
+            except Exception: pass
+
+    def env(self, **kw):
+        e = T.Env(self.fx.st(), self.p, evidence_final=self.final, **kw); self.envs.append(e)
+        e.worker.stop_signal = lambda pid, sig: setattr(e.probe, "gone", True)
+        e.worker.stop_exit = lambda: None
+        return e
+
+    def test_the_sealed_evidence_is_written_once_readable_and_not_rewritable(self):
+        e = self.env()
+        e.call("identify")
+        out = e.raw({"protocol": "vrc.v1", "op": "session_stop", "target_host": T.HOST, "caller": "operator", "deadline_ms": 20000})
+        self.assertTrue(out["ok"], out)
+        ev = out["result"]["evidence"]
+        self.assertTrue(ev["finalized"], ev)
+        self.assertEqual(ev["mode"], "0o440", "the operator may read the sealed record and may not rewrite it")
+        files = sorted(os.listdir(self.final))
+        self.assertEqual(len(files), 1, files)
+        body = open(os.path.join(self.final, files[0]), "rb").read()
+        self.assertEqual(rw.sha(body), ev["sha256"])
+        self.assertIn(b"SESSION_STOPPED", body)
+        self.assertIn(b'"op": "identify"', body.replace(b'"op":"identify"', b'"op": "identify"'))
+
+    def test_finalization_never_overwrites_an_existing_record(self):
+        e = self.env()
+        first = e.worker.finalize_evidence("s1", "test")
+        self.assertTrue(first["finalized"])
+        second = e.worker.finalize_evidence("s1", "test")
+        self.assertFalse(second["finalized"], "an existing sealed record must never be replaced")
+        self.assertIn("FileExistsError", second["reason"])
+
+    def test_a_worker_without_a_finalized_directory_says_so_instead_of_pretending(self):
+        e = T.Env(self.fx.st(), self.p); self.envs.append(e)
+        self.assertEqual(e.worker.finalize_evidence("s", "test")["finalized"], False)
+
+    def test_the_sealed_profile_masks_the_worker_journal_and_the_key_from_resolve(self):
+        """The mask is what makes the isolation real; the seal is what makes it reviewable."""
+        for path in self.p.gov["evidence_mask"]:
+            self.assertTrue(path.startswith("/"))
+        self.assertGreaterEqual(len(self.p.gov["evidence_mask"]), 2)
+        conf = self.p.gov["confinement"]
+        for call in ("mount", "umount2", "unshare", "setns"):
+            self.assertIn(call, conf["denied_syscalls"], "without these the mask could be removed by the masked process")
+
+    def test_the_real_kernel_proof_is_part_of_the_suite(self):
+        """The mask, the capability drop and the filter are proved against a real kernel in tests/test_capsule_confinement.py;
+        this test only asserts that proof is wired into the harness, so it cannot be quietly dropped."""
+        runner = open(os.path.join(ROOT, "run-tests.sh"), encoding="utf-8").read()
+        self.assertIn("tests/test_capsule_confinement.py", runner)
+        self.assertIn("tests/test_dedicated_capsule.py", runner)
+
+
+class RollbackAttack(unittest.TestCase):
+    """APP-09/APP-10, the hard gate: the decisive bypass of 60e8bcd8, replayed against this successor."""
+    def setUp(self):
+        self.cap = T.synthetic_capsule(); self.fx = T.Fixture()
+        self.p = self.fx.profile(capsule=self.cap, mask=self.cap["mask"]); self.envs = []
+
+    def tearDown(self):
+        for e in self.envs:
+            try: e.close()
+            except Exception: pass
+
+    def env(self, **kw):
+        e = T.Env(self.fx.st(), self.p, **kw); self.envs.append(e); return e
+
+    def test_a_post_seal_registration_swap_is_denied_with_no_b_data(self):
+        """Library B is swapped into the sealed profile after the seal — the shape of the old rollback. The exact-tree law catches it
+        at the PROFILE stage, before Resolve is attached at all."""
+        e = self.env(api=P.LeakHandle(self.fx.name, {"name": "Prod Project", "uuid": T.P_A1}, T.TLS, ["Prod Project", "Second"],
+                                      {"timelineFrameRate": "23.976", "vidtoolzLibraryMarker": P.B_ONLY}))
+        self.assertTrue(e.call("identify")["ok"] is not False)
+        reg = os.path.join(self.p.prov["profile_root"], self.p.prov["registration_relpath"])
+        open(reg, "w").write(f'{self.fx.bname}:{self.fx.B}::::DISK\n')
+        err = e.err("get_project_settings")
+        a = e.authz()
+        self.assertEqual(err.code, "LIBRARY_MISMATCH")
+        self.assertEqual(a["decision"], "DENIED"); self.assertEqual(a["stage"], "profile")
+        self.assertEqual(a["reason"], "SESSION_PROFILE_MUTATED")
+        blob = json.dumps(a) + json.dumps(e.journal())
+        self.assertNotIn(P.B_ONLY, blob, "no B-only data may appear anywhere")
+        self.assertNotIn(self.fx.B, blob.replace(self.fx.A, ""), "B's root must not appear as an authorized value")
+
+    def test_a_rolled_back_registration_is_still_denied_because_the_capsule_binds_the_whole_boundary(self):
+        """The old attack restored A before the worker looked. Here the restoration itself does not help: the read still has to satisfy
+        the host primitive, the capsule confinement and the attested session, and the B session was never attested."""
+        e = self.env()
+        reg = os.path.join(self.p.prov["profile_root"], self.p.prov["registration_relpath"])
+        original = open(reg).read()
+        open(reg, "w").write(f'{self.fx.bname}:{self.fx.B}::::DISK\n')
+        e.err("get_project_settings")
+        open(reg, "w").write(original)                    # the rollback
+        out = e.call("get_current_project")                # A is legitimately readable again
+        self.assertEqual(out["project"]["uuid"], T.P_A1)
+        stages = [j["authorization"]["stage"] for j in e.journal() if j.get("event") == "OP"]
+        self.assertIn("profile", stages, "the swapped moment is journaled as a refusal, permanently")
+        self.assertNotIn(P.B_ONLY, json.dumps(e.journal()))
+
+    def test_a_cloned_library_with_the_same_project_uuid_is_denied(self):
+        """Byte-identical clone, same project UUID, different physical directory: registration text can be forged, provenance cannot."""
+        e = self.env()
+        gov_root = self.p.gov["library"]["canonical_root"]
+        self.assertEqual(gov_root, os.path.realpath(self.fx.A))
+        probe = T.FakeProbe(self.p)
+        probe.statvfs_flag = lambda path: rw.ST_RDONLY
+        err = None
+        moved = gov_root + "-moved"
+        os.rename(gov_root, moved)                        # the pinned physical root is gone; a clone stands where it was
+        try:
+            os.makedirs(gov_root); T.make_library(gov_root, [("Prod Project", T.P_A1, T.TLS)])
+            err = e.err("get_current_project")
+            a = e.authz()
+            self.assertEqual(a["decision"], "DENIED"); self.assertEqual(a["stage"], "library")
+            self.assertEqual(a["reason"], "LIBRARY_NOT_AUTHORIZED")
+        finally:
+            shutil.rmtree(gov_root, ignore_errors=True); os.rename(moved, gov_root)
+        self.assertIsNotNone(err)
+
+    def test_the_old_candidates_own_bypasses_stay_closed_here(self):
+        """The duplicate-environment and stale-handle closures are regression-tested against the REJECTED bytes in
+        tests/test_reviewer_attacks_regression.py and tests/test_prior_bypass_regression.py; this asserts the laws are still present in
+        the successor rather than silently dropped by the capsule rewrite."""
+        src = open(os.path.join(ROOT, "worker", "resolve_worker.py"), encoding="utf-8").read()
+        self.assertIn("SESSION_ENV_AMBIGUOUS", src); self.assertIn("SESSION_ENDPOINT_UNATTRIBUTED", src)
+        self.assertIn("SESSION_PREDATES_PROFILE", src); self.assertIn("SESSION_RESTARTED", src)
+        self.assertIn("def environ_entries", src); self.assertNotIn("def environ(self", src)
 
 
 class _CountingApi:
