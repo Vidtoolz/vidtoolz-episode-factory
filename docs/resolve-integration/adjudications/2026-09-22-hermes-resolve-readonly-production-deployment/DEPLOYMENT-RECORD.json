@@ -1,0 +1,194 @@
+{
+  "acceptance": {
+    "commit": "f8be0e2314070ab66f7071e40abb74e8e52a92ce",
+    "record": "docs/resolve-integration/adjudications/2026-09-22-hermes-resolve-readonly-final-acceptance/ACCEPTANCE.json",
+    "record_id": "43fc21e3abf9bfe5f6341df90cf04964cb4c8db43af68eb8ad5411dabcf1c545"
+  },
+  "authority_verification": "facade constructed in production plugin context: bundle manifest 29216e6b, Phase 1 pin, 24 files, v1.20 acceptance record id 43afa636 verified; 7 modules bound from verified bytes; F-08 registry guard passed on ~/.config/vidtoolz-resolve-control/registry.json (sha 2e508fe7\u2026, targets presto/vidlap2/vidnux)",
+  "boundaries": {
+    "external_scripting": "Local (unchanged on all hosts)",
+    "generic_executor": false,
+    "persistent_worker_authority": "NONE",
+    "target_fallback": false,
+    "write_authority": "NONE"
+  },
+  "deployed_candidate": {
+    "all_bytes_match_accepted": true,
+    "facade_commit": "8e068fea2d4df5b9709c387f6444502bd7bc2091",
+    "facade_tree": "ba9d431673d647a155f339738f3fee32760326c2",
+    "installation_root": "/home/vidtoolz/.hermes/plugins/vidtoolz-resolve-readonly",
+    "installed_files": [
+      {
+        "bytes": 2152,
+        "git_blob": "83754f7bb55802d77b29c5670050370da0d244c2",
+        "path": "README.md",
+        "sha256": "179e568a90852c87c0e424bcfcf3ad816b073c27497057eb2a7696b2936c280c"
+      },
+      {
+        "bytes": 1885,
+        "git_blob": "6246c787607f216fec984761e78c78c7b4db3875",
+        "path": "__init__.py",
+        "sha256": "e630c6de063670d8788f82f47bb65089954b2aa83f6ef59e75ca91d2a9d55f87"
+      },
+      {
+        "bytes": 665,
+        "git_blob": "020c278e935a705068e00cede2380f29374cb81d",
+        "path": "plugin.yaml",
+        "sha256": "b97136ea795f99c5954dbbff98798c947d5744236417da0d5aed973ddefa4359"
+      },
+      {
+        "bytes": 1336,
+        "git_blob": "64a2bd000a97c66b4fa75c0fe0c5e5fafc7f6f28",
+        "path": "vrcfacade/__init__.py",
+        "sha256": "d604d93da1d4e0895469a30c345a12bf1198c289510ba417a99ac4be82f52974"
+      },
+      {
+        "bytes": 16849,
+        "git_blob": "99e5cae58045953abab5e2b94544bc48f90cb8cb",
+        "path": "vrcfacade/authority.py",
+        "sha256": "4f6d0107664d30321e4a9750028f80803f74fb5ad4537a131e21bd9bdaed1180"
+      },
+      {
+        "bytes": 20300,
+        "git_blob": "9bf838c2d50f9ee46dacd610caaa6b469c276979",
+        "path": "vrcfacade/facade.py",
+        "sha256": "a2d022f22fd22efb783f8c8fcb55d549a5c8318a6547ddcf97c353c1c7354ac1"
+      },
+      {
+        "bytes": 11458,
+        "git_blob": "8083f273c5907dcfae9eb52e29e6102bc687934a",
+        "path": "vrcfacade/registry_guard.py",
+        "sha256": "16b9d16b0e83f34fa043e3eea98e4caed4a694f54df68121af833b02d4d68a92"
+      },
+      {
+        "bytes": 10062,
+        "git_blob": "870f0af4e2b7ee23b620cbeb56f7645a61658042",
+        "path": "vrcfacade/response.py",
+        "sha256": "c4e6cc5aa5532aea5d240bf2fa399a474b783eb314383341c7f16fc9af4ce8cb"
+      },
+      {
+        "bytes": 6564,
+        "git_blob": "c8f4b92767ffae57416ed295ce6142c8f39ca0a4",
+        "path": "vrcfacade/tools.py",
+        "sha256": "3d5b8b7880701ced292e2e59c152787255ae18b2edc7006eec3e7c3a976dfad6"
+      },
+      {
+        "bytes": 8115,
+        "git_blob": "8ef6271a4ed127282004cc2cad0f97def14d0bf7",
+        "path": "vrcfacade/verified_import.py",
+        "sha256": "cbcda5158375d9244d0bdb88cd855d7590b6341ce127e427ecea91f22c1ec278"
+      }
+    ],
+    "plugin_kind": "standalone",
+    "plugin_name": "vidtoolz-resolve-readonly",
+    "plugin_subtree_sha1": "a6c97a78f37c72bfda61e89c0c782ac6adf70df9",
+    "source_method": "git archive of the exact commit path plugins/vidtoolz-resolve-readonly (never the worktree)"
+  },
+  "durable_provenance": {
+    "authority_branch_pushed": "origin docs/resolve-authority-freeze-v1.20 -> f8be0e23 (new remote branch, github.com:Vidtoolz/vidtoolz-episode-factory)",
+    "facade_branch_pushed": "origin claude/hermes-resolve-readonly-facade-20260921 -> 8e068fea (new remote branch, github.com:Vidtoolz/resolve-hermes)",
+    "force_push": false,
+    "merged_to_main": false
+  },
+  "evidence": "~/outputs/hermes-resolve-readonly-production-deployment-2026-09-22/",
+  "frozen_bytes_modified": false,
+  "grants_additional_authority": false,
+  "hermes": {
+    "config_changed_fields": {
+      "plugins.disabled": "added [] (written by hermes plugins enable)",
+      "plugins.enabled": "[] -> ['vidtoolz-resolve-readonly']"
+    },
+    "config_sha256_after": "dca5ee33c0c337a529ca5094483f3e811fdfa8d119dae06ff4c06b109e6c4a02",
+    "config_sha256_before": "9e1bf83540c727f8b95b375d764d6734e95bb1b8b545e9f2cad0c04e32466261",
+    "core_head_after": "524041b9d0437cd4424a524af4b9e26145e69ab0",
+    "core_head_before": "524041b9d0437cd4424a524af4b9e26145e69ab0",
+    "core_repo": "~/.hermes/hermes-agent",
+    "core_source_changed": false,
+    "enable_command": "hermes plugins enable vidtoolz-resolve-readonly (no --allow-tool-override)",
+    "gateway": {
+      "effect_until_reload": "gateway-served sessions keep the pre-enablement registry; new hermes CLI sessions already load the nine tools",
+      "operator_action": "sudo systemctl restart hermes-gateway  # bounded: restarts only this unit; do NOT use 'hermes gateway restart --system' which also rewrites the unit file",
+      "pid_after": 10461,
+      "pid_before": 10461,
+      "reason": "restart requires sudo (interactive password); not performed",
+      "reloaded": false,
+      "service": "hermes-gateway.service (systemd system unit)"
+    },
+    "unrelated_config_changes": null,
+    "version": "Hermes Agent v0.21.4 (2026.9.21)"
+  },
+  "housekeeping": {
+    "vidnux_isolated_qualification_session": "pid 101499 closed normally via API Quit() 04:47Z; fixture (11 files, Project.db 61b9aaeb\u2026) intact; production Resolve config untouched"
+  },
+  "operator": "Mikko (deployment instruction 2026-09-22)",
+  "p3_carry_forward": [
+    "P3-A health shaping omits library_gate",
+    "P3-B generation/version shaping mismatch",
+    "F-07",
+    "F-09",
+    "F-10",
+    "F-11",
+    "R-02",
+    "R-04",
+    "R-05",
+    "F-120-06",
+    "F-120-07",
+    "F-120-08",
+    "HFINAL-P3-01 (runtime __pycache__ appears in the installed plugin dir when Hermes imports it; source bytes unchanged)",
+    "HFINAL-P3-02",
+    "HACC-P3-01",
+    "TOCTOU/re-verification"
+  ],
+  "production_probe": {
+    "authority_in_reply": {
+      "authority_version": "1.20.0",
+      "mode": "READ_ONLY",
+      "write_authority": "NONE"
+    },
+    "resolve_health(no target)": "ok false, TARGET_REQUIRED",
+    "resolve_health(target=presto)": "ok false, WORKER_OFFLINE (no worker started by deployment)"
+  },
+  "production_tool_registry": {
+    "count": 9,
+    "method": "real hermes_cli.plugins.discover_plugins + tools.registry in a fresh process with the default HERMES_HOME",
+    "names_exact": true,
+    "prohibited_surface_present": [],
+    "resolve_tools": [
+      "resolve_get_current_project",
+      "resolve_get_current_timeline",
+      "resolve_get_media_pool_summary",
+      "resolve_get_project_fingerprint",
+      "resolve_get_project_settings",
+      "resolve_get_timeline_settings",
+      "resolve_health",
+      "resolve_identify",
+      "resolve_list_timelines"
+    ],
+    "schema_checks": "target required; enum presto/vidlap2/vidnux; no default; additionalProperties false; no endpoint/op params; timeline_uuid required, no timeline_name",
+    "schema_violations": [],
+    "toolset": "vidtoolz_resolve",
+    "total_tools": 21
+  },
+  "record_class": "descriptive deployment evidence for the accepted Hermes Resolve read-only integration (additive; grants no additional authority)",
+  "record_id": "d8e1cf75653a71c82ed354befadda08399299df834f37fca0a40fbcb07a691d3",
+  "record_type": "DEPLOYMENT_RECORD",
+  "recorded_at": "2026-09-22",
+  "recorded_by": "Claude Code",
+  "rollback": [
+    "hermes plugins disable vidtoolz-resolve-readonly",
+    "restore ~/.hermes/config.yaml from evidence/config.yaml.before (sha 9e1bf835\u2026) or verify plugins.enabled == []",
+    "sudo systemctl restart hermes-gateway (if it had been reloaded)",
+    "rm -rf ~/.hermes/plugins/vidtoolz-resolve-readonly",
+    "re-enumerate registry: 0 resolve_* tools",
+    "source repositories untouched"
+  ],
+  "schema": "vidtoolz.hermesResolveProductionDeployment.v1",
+  "workers": {
+    "auto_start": false,
+    "persistent_services": "none",
+    "presto": "not started",
+    "tunnels": "none",
+    "vidlap2": "not started",
+    "vidnux": "not started"
+  }
+}
