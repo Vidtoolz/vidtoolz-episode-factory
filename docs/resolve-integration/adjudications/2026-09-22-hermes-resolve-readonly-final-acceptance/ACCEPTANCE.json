@@ -1,0 +1,191 @@
+{
+  "acceptance_subject": "Hermes Resolve read-only integration",
+  "accepted": {
+    "branch": "claude/hermes-resolve-readonly-facade-20260921",
+    "commit": "8e068fea2d4df5b9709c387f6444502bd7bc2091",
+    "component": "Hermes Resolve read-only facade (plugin vidtoolz-resolve-readonly)",
+    "enabled": false,
+    "installed": false,
+    "merged": false,
+    "pushed": false,
+    "repository": "~/resolve-hermes",
+    "tree": "ba9d431673d647a155f339738f3fee32760326c2"
+  },
+  "additive_governance_chain": {
+    "authority_branch": "docs/resolve-authority-freeze-v1.20",
+    "head_before_this_record": "2d66013c01d0ca3eb7a7d92539ef2737575fd1fa",
+    "records": [
+      "e01c7f1c270bfe094210388279b2c99bbcea1b94 PRESTO A4 extension",
+      "d700bc8e442faf158e5007e5b34f9b7e41022698 PRESTO fixture record",
+      "9d7d0f085634e9c7746cabc02e95f0c1c94d0d7e VIDLAP2 A4 extension",
+      "2d66013c01d0ca3eb7a7d92539ef2737575fd1fa VIDLAP2 fixture record"
+    ]
+  },
+  "approved_capability": "Hermes may invoke the nine reviewed read-only Resolve facade tools against an explicitly selected configured Resolve host through the verified Phase 1 control path, subject to the existing authority, target, library, project and timeline identity gates.",
+  "basis": {
+    "independent_final_acceptance_review": "~/outputs/hermes-resolve-readonly-three-host-final-acceptance-review-2026-09-22/",
+    "independent_review_manifest_sha256": "24644f215fb76a9da525879c7bc2f2d8e0230136255056e74413ae20246cd22d",
+    "p0_p1_p2": 0,
+    "p3": "16 retained/consolidated + HACC-P3-01",
+    "three_host_live_qualification": {
+      "fixture_note": "host qualification relies on three distinct host-specific fixtures; they establish qualification evidence and grant no production-write authority",
+      "presto": {
+        "fixture_project_uuid": "38609cb5-92d0-4abe-b379-2e3b16b79a6d",
+        "library_instance_uuid": "687c639f-0092-4279-87d3-e7363417c7cd",
+        "manifest_sha256": "cd09f4c5020a9764ff0ff56e8adf0e5f2ede110e9240fbd92969d9e291a4db2a",
+        "report": "~/outputs/hermes-resolve-readonly-facade-live-qualification-r5-presto-2026-09-22/",
+        "status": "QUALIFIED"
+      },
+      "three_host_record": "~/outputs/hermes-resolve-readonly-facade-live-qualification-r7-vidlap2-2026-09-22/HOST-QUALIFICATION.json",
+      "three_host_record_sha256": "5db54a1321abfcac2a66fc767694af8d5ed19540c3cd8073d4fbfe95df5e2134",
+      "vidlap2": {
+        "fixture_project_uuid": "5bd68676-f8d6-4e21-8bc5-27440a59a0c4",
+        "library_instance_uuid": "b714a6ea-6dbf-42a6-905c-87afab6e5df3",
+        "manifest_sha256": "0313e5af1bf91dfe5e15cab47bd6f66cf9abc761caa51e1afe01975f98314ae8",
+        "report": "~/outputs/hermes-resolve-readonly-facade-live-qualification-r7-vidlap2-2026-09-22/",
+        "status": "QUALIFIED"
+      },
+      "vidnux": {
+        "fixture_project_uuid": "7ac4210e-5ada-46a3-9821-831bfa83a4cc",
+        "library_instance_uuid": "7bebd326-63b5-4359-8811-23626d862be6",
+        "manifest_sha256": "978599c77a2dfc5e7fa7f00eff86fa13b21a89d2e6a45943184fed00e3466088",
+        "report": "~/outputs/hermes-resolve-readonly-facade-live-qualification-r6-vidnux-2026-09-22/",
+        "status": "QUALIFIED"
+      }
+    },
+    "verdict": "APPROVED WITH NON-BLOCKING FOLLOW-UPS \u2014 MIKKO FINAL ACCEPTANCE REQUIRED"
+  },
+  "decided_by": "Mikko",
+  "decision": "ACCEPT",
+  "does_not_authorize": [
+    "Resolve writes",
+    "timeline edits",
+    "marker creation",
+    "media imports",
+    "project or timeline creation",
+    "setting mutation",
+    "rendering/export",
+    "persistent workers",
+    "boot-time workers",
+    "services/scheduled tasks",
+    "Network scripting",
+    "generic Resolve execution",
+    "write-capability development under this acceptance",
+    "installation or enablement in production Hermes (separate deployment gate)"
+  ],
+  "frozen_bytes_modified": false,
+  "hermes_core_state": {
+    "commit": "524041b9d0437cd4424a524af4b9e26145e69ab0",
+    "config_sha256": "9e1bf83540c727f8b95b375d764d6734e95bb1b8b545e9f2cad0c04e32466261",
+    "facade_enabled": false,
+    "facade_installed": false,
+    "plugins_dir": [
+      "hermes-achievements"
+    ],
+    "plugins_enabled": [],
+    "runtime": "~/.hermes/hermes-agent",
+    "version": "Hermes Agent v0.21.4 (2026.9.21)"
+  },
+  "p3_carry_forward": {
+    "P3-A": {
+      "closure_gate": "Before relying on enriched facade health diagnostics.",
+      "disposition": "observability defect; safety enforcement remains below facade; non-blocking for read-only acceptance",
+      "finding": "resolve_health shaping omits library_gate diagnostic detail"
+    },
+    "P3-B": {
+      "closure_gate": "Before relying on shaped worker generation/version diagnostics.",
+      "disposition": "observability/schema mapping; raw worker evidence remains correct; non-blocking for read-only acceptance",
+      "finding": "facade generation/version mapping does not match worker worker_generation/version fields, producing null shaped diagnostics"
+    },
+    "closed_by_this_record": [],
+    "retained_binding": {
+      "F-07": "before writes",
+      "F-09": "before writes",
+      "F-10": "before persistence",
+      "F-11": "before persistence",
+      "F-120-06": "schema-registration follow-up",
+      "F-120-07": "preserve historical provenance",
+      "F-120-08": "before broader construction use",
+      "HACC-P3-01": "stale prose/reference cleanup only via additive erratum if republished",
+      "HFINAL-P3-01": "test-bytecode hygiene (disable bytecode or use reviewer copy on future tests)",
+      "HFINAL-P3-02": "retain bounded original failure code before future protocol extensions",
+      "R-02": "before writes",
+      "R-04": "before writes",
+      "R-05": "preserve historical evidence",
+      "TOCTOU/re-verification": "before expanding local trust"
+    }
+  },
+  "phase1_source_pin": {
+    "commit": "77c26103dfe88c448267a9c1efe7f34a20a39375",
+    "status": "ACCEPTED / FROZEN SOURCE \u2014 unchanged",
+    "tree": "5e78e8f52654f3f878d842cf10162069e08b6439",
+    "worker_sha256": "371caf131e5d21cdb8b5f3e505934154b7ee835427d25d9683d51013d345f4b3"
+  },
+  "record_id": "43fc21e3abf9bfe5f6341df90cf04964cb4c8db43af68eb8ad5411dabcf1c545",
+  "record_id_derivation": "sha256 over json.dumps(this object with record_id and record_id_derivation removed, sort_keys=True, separators=(',',':'))",
+  "recorded_at": "2026-09-22",
+  "recorded_by": "Claude Code",
+  "recorded_decision": "I accept Hermes Resolve read-only integration candidate 8e068fea2d4df5b9709c387f6444502bd7bc2091 as the approved VIDTOOLZ Hermes read-only Resolve integration, based on the completed independent technical review and successful live qualification of PRESTO, vidnux and VIDLAP2.",
+  "resolve_authority": {
+    "acceptance_commit": "720b2d78313c7749f3516cb39fad1310e13027b2",
+    "bundle_manifest_sha256": "29216e6bd6024a8e4e35b0e77ac2aa7fbba8fa34c2a222b9145f93bb81cfedfb",
+    "candidate": "cdda151ac3101f98e0cca678e522d6e19f528086",
+    "status": "ACCEPTED / FROZEN \u2014 unchanged by this record",
+    "version": "1.20.0"
+  },
+  "retained_boundaries": {
+    "hermes_production_deployment": "NOT YET AUTHORIZED/COMPLETED \u2014 separate later gate",
+    "persistent_worker_authority": "NONE",
+    "resolve_external_scripting": "Local",
+    "write_authority": "NONE"
+  },
+  "schema": "vidtoolz.resolveHumanAcceptance.v1",
+  "scope": {
+    "external_scripting_mode": "Local",
+    "limited_to": [
+      "the nine reviewed read-only Resolve facade tools",
+      "explicit logical target selection",
+      "the qualified PRESTO, vidnux and VIDLAP2 control paths",
+      "frozen Resolve Authority v1.20.0",
+      "frozen Phase 1 worker/control-plane semantics",
+      "the existing project/library/timeline identity guards",
+      "temporary/session-owned worker operation only"
+    ],
+    "network_scripting": false,
+    "targets": {
+      "accepted": [
+        "presto",
+        "vidnux",
+        "vidlap2"
+      ],
+      "caller_controlled_endpoint": false,
+      "default_target": null,
+      "explicit_target_required": true,
+      "fallback": false,
+      "raw_host_ip_targeting": false
+    },
+    "tool_count": 9,
+    "tool_surface": [
+      "resolve_health",
+      "resolve_identify",
+      "resolve_get_current_project",
+      "resolve_get_current_timeline",
+      "resolve_list_timelines",
+      "resolve_get_project_settings",
+      "resolve_get_timeline_settings",
+      "resolve_get_media_pool_summary",
+      "resolve_get_project_fingerprint"
+    ]
+  },
+  "status_model": {
+    "hermes_production_deployment": "NOT YET ENABLED",
+    "hermes_resolve_readonly_facade_8e068fea": "ACCEPTED",
+    "persistent_worker_authority": "NONE",
+    "phase1_read_only_control_substrate": "ACCEPTED / FROZEN SOURCE",
+    "presto": "LIVE QUALIFIED",
+    "resolve_authority_v1_20_0": "ACCEPTED / FROZEN",
+    "vidlap2": "LIVE QUALIFIED",
+    "vidnux": "LIVE QUALIFIED",
+    "write_authority": "NONE"
+  }
+}
