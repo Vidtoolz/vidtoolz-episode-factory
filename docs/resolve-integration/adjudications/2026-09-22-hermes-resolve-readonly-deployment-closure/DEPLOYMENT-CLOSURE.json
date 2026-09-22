@@ -1,0 +1,80 @@
+{
+  "boundaries": {
+    "external_scripting": "Local",
+    "persistent_worker_authority": "NONE",
+    "write_authority": "NONE"
+  },
+  "config": {
+    "plugins_enabled": [
+      "vidtoolz-resolve-readonly"
+    ],
+    "sha256": "dca5ee33c0c337a529ca5094483f3e811fdfa8d119dae06ff4c06b109e6c4a02"
+  },
+  "deployment_status": "DEPLOYED AND ACTIVE IN GATEWAY",
+  "evidence": "~/outputs/hermes-resolve-readonly-gateway-closure-and-operations-2026-09-22/",
+  "frozen_bytes_modified": false,
+  "gateway": {
+    "active_since_local": "2026-09-22 07:57:58 EEST",
+    "active_since_utc": "2026-09-22T04:57:58Z",
+    "control_socket_identify": {
+      "code_sha": "524041b9d0437cd4424a524af4b9e26145e69ab0",
+      "code_version": "0.21.4",
+      "hermes_home": "/home/vidtoolz/.hermes",
+      "pid": 172401,
+      "supervisor": "systemd"
+    },
+    "manual_restart_by": "Mikko: sudo systemctl restart hermes-gateway",
+    "n_restarts": 0,
+    "new_pid": 172401,
+    "previous_pid": 10461,
+    "result": "success",
+    "service": "hermes-gateway.service (systemd system unit)",
+    "status": "running; telegram connected; active_agents 0",
+    "unit_sha256_unchanged": "2969329f419e97ce3534c0872993bba1258f068788066243b46d0863b3eaf22b"
+  },
+  "grants_additional_authority": false,
+  "library_gate": {
+    "broadening_requires": "registry gate change = change to the qualified control path (governance record + re-qualification); EKA/nelja/Local Database = new frozen worker + Phase 1 re-review (pinned PROHIBITED_LIBRARIES); \u00a7A4 NETWORK_LIBRARY_PROHIBITED_DURING_QUALIFICATION and the v1.20 human acceptance scope",
+    "current_gate": "--require-library 'VIDTOOLZ Resolve Qualification v1' on presto/vidlap2 (name), '\u2026=/home/vidtoolz/outputs/resolve-qualification-library' on vidnux (name+root), from ~/.config/vidtoolz-resolve-control/registry.json (sha 2e508fe7\u2026)",
+    "frozen_worker_hard_prohibitions": [
+      "EKA",
+      "EKA192.168.50.199",
+      "nelja",
+      "Local Database"
+    ],
+    "production_libraries_authorized": false,
+    "qualification_only": true
+  },
+  "operations_guide": "docs/resolve-integration/HERMES-RESOLVE-READONLY-OPERATIONS.md",
+  "operator": "Mikko",
+  "production_resolve_read_capability": "qualification fixtures only (three hosts)",
+  "record_class": "additive continuation of 2026-09-22-hermes-resolve-readonly-production-deployment (record d8e1cf75\u2026, commit 86ab3022); descriptive; grants no authority",
+  "record_id": "668aeaf6182c1b5d4000959b95f80122ec82d63de81f6ca70b89093ab4819a94",
+  "record_type": "DEPLOYMENT_CLOSURE_RECORD",
+  "recorded_at": "2026-09-22",
+  "recorded_by": "Claude Code",
+  "schema": "vidtoolz.hermesResolveDeploymentClosure.v1",
+  "served_registry_evidence": {
+    "assembled_for_model": 25,
+    "deferred_behind_tool_search": true,
+    "direct_in_gateway_invocation": "not performed (only path is a user-visible Telegram turn); registered-handler probe in the gateway-equivalent process: presto/vidlap2 -> WORKER_OFFLINE, no target -> TARGET_REQUIRED",
+    "full_catalog": 48,
+    "method": "the gateway exposes no tool-listing verb (control socket verbs: identify, status, rescan-profiles, \u2026); the gateway's own warm-up function gateway.run._warm_turn_machinery_sync was executed in a fresh process with the gateway's venv, HERMES_HOME and config and returned 25, equal to the live gateway log line 'Turn machinery warmed in 0.6s (25 tool schema(s) materialized)' at 07:58:00",
+    "prohibited_surface": [],
+    "registry_total": 109,
+    "resolve_tool_count": 9,
+    "resolve_tools": [
+      "resolve_get_current_project",
+      "resolve_get_current_timeline",
+      "resolve_get_media_pool_summary",
+      "resolve_get_project_fingerprint",
+      "resolve_get_project_settings",
+      "resolve_get_timeline_settings",
+      "resolve_health",
+      "resolve_identify",
+      "resolve_list_timelines"
+    ],
+    "schema_violations": []
+  },
+  "workers": "none running; operator-started temporary only"
+}
