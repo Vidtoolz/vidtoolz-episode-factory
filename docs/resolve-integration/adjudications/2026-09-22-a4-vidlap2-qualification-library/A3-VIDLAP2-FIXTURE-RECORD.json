@@ -1,0 +1,92 @@
+{
+  "approval_basis": "Mikko registered the Disk library in the Resolve GUI on VIDLAP2 and instructed resumption of the R7 lane (2026-09-22); parent record A4-VIDLAP2-PROVISIONING-RECORD (04eb9496\u2026) in this directory, commit 9d7d0f08.",
+  "approver": "Mikko",
+  "candidate_under_qualification": {
+    "facade_commit": "8e068fea2d4df5b9709c387f6444502bd7bc2091",
+    "phase1_commit": "77c26103dfe88c448267a9c1efe7f34a20a39375",
+    "worker_sha256": "371caf131e5d21cdb8b5f3e505934154b7ee835427d25d9683d51013d345f4b3",
+    "write_authority": "NONE"
+  },
+  "eka_prohibition": "EKA/nelja/Local Database never contacted; worker gate refuses them; all journal entries in the window target vidlap2 only",
+  "envelope": {
+    "acceptance_commit": "720b2d78313c7749f3516cb39fad1310e13027b2",
+    "authority_version": "1.20.0",
+    "host_name": "VIDLAP2",
+    "library_name": "VIDTOOLZ Resolve Qualification v1",
+    "library_root": "C:\\Users\\mjp77\\.vidtoolz-resolve-qualification\\VIDTOOLZ Resolve Qualification v1",
+    "library_uuid": "b714a6ea-6dbf-42a6-905c-87afab6e5df3",
+    "manifest_sha256": "29216e6bd6024a8e4e35b0e77ac2aa7fbba8fa34c2a222b9145f93bb81cfedfb"
+  },
+  "evidence": "~/outputs/hermes-resolve-readonly-facade-live-qualification-r7-vidlap2-2026-09-22/",
+  "frozen_bytes_modified": false,
+  "host_identity": {
+    "hostname": "VIDLAP2",
+    "machine_guid_prefix": "40086c1a",
+    "ssh_host_key_ed25519_sha256": "CCko0i+bWyHtzmGywsY8STtNgF1DWURuegL/4QtBUIo",
+    "user": "mjp77"
+  },
+  "library": {
+    "identity_gate_proof": {
+      "method": "exact frozen worker 371caf13\u2026 (gen 5, instance ebc35ac5\u2026) via real facade resolve_identify through temporary tunnel 127.0.0.1:47221",
+      "observed": {
+        "DbName": "VIDTOOLZ Resolve Qualification v1",
+        "DbType": "Disk",
+        "host_id": "VIDLAP2",
+        "product": "DaVinci Resolve Studio",
+        "resolve_pid": 18352,
+        "version": "21.1.0.14"
+      }
+    },
+    "instance_uuid": "b714a6ea-6dbf-42a6-905c-87afab6e5df3",
+    "kind": "Disk",
+    "name": "VIDTOOLZ Resolve Qualification v1",
+    "on_disk_provisioning_record_sha256": "31a604355b685d5c27ee764f1725f22898ea3e49ddab736d1485a72151c209d2",
+    "prohibited": [
+      "EKA",
+      "EKA192.168.50.199",
+      "nelja",
+      "nelja192.168.50.199",
+      "Local Database",
+      "any PostgreSQL/network library"
+    ],
+    "registration": "Resolve GUI (Add Project Library > Disk), by Mikko, 2026-09-22; dblist.conf/activedb.conf never authored or copied",
+    "root_path": "C:\\Users\\mjp77\\.vidtoolz-resolve-qualification\\VIDTOOLZ Resolve Qualification v1"
+  },
+  "post_state_rule": "fixture preserved as the repeatable governed VIDLAP2 qualification fixture; NO FURTHER FIXTURE MUTATION",
+  "project": {
+    "created_at": "2026-09-22T04:10:42Z",
+    "created_by": "tools/provision_fixture_vidlap2.py (sha256 3208276be644bdcd0ce5f5460e287163b50852d3d46bfa484b40354fc0794afd) over ssh vidlap2, journaled (provisioning-journal.jsonl, 11 steps, exit 0)",
+    "fingerprint_spec": "vidtoolz.qualFixtureFingerprint.v1",
+    "fixture_fingerprint_before_sha256": "f09b5246fa220f5fc5312626270feca16f9b9724dd85aa48b169c52858a6afa2",
+    "independent_verification": "raw-API re-fingerprint (fp_qual_vidlap2.py) at 04:11Z and after cleanup at 04:12Z: identical f09b5246\u2026; facade resolve_get_project_fingerprint x3: stable d06afacb\u2026 (different spec, not compared as equal)",
+    "media": "none (media_pool.root_clips=2 are the two timelines)",
+    "name": "VIDTOOLZ_RESOLVE_QUAL_V1_VIDLAP2",
+    "naming_rule": "TARGET-CONTRACT.json#naming.project_prefix VIDTOOLZ_RESOLVE_QUAL_V1_",
+    "purpose": "disposable qualification fixture for the Hermes read-only facade live qualification on VIDLAP2; not production content",
+    "settings_applied": {
+      "timelineFrameRate": "25",
+      "timelinePlaybackFrameRate": "25 (SetSetting returned False; derived setting)",
+      "timelineResolutionHeight": "1080",
+      "timelineResolutionWidth": "1920"
+    },
+    "timelines": [
+      {
+        "name": "VIDTOOLZ_RESOLVE_QUAL_V1_VIDLAP2__TL_A",
+        "uuid": "1773b869-4b32-4afc-963a-4160087f2d0c"
+      },
+      {
+        "name": "VIDTOOLZ_RESOLVE_QUAL_V1_VIDLAP2__TL_B",
+        "uuid": "9a300f87-8999-44c8-be9a-02316647404c"
+      }
+    ],
+    "uuid": "5bd68676-f8d6-4e21-8bc5-27440a59a0c4",
+    "uuid_distinctness": "project/timeline/library UUIDs verified distinct from vidnux (7ac4210e, 933dc179, 43868e12, 7bebd326) and PRESTO (38609cb5, 01bc28e2, aac2ad87, 687c639f)"
+  },
+  "record_class": "A3-class qualification fixture provisioning record for VIDLAP2 (governance record, additive, outside the frozen v1.20 bundle)",
+  "record_id": "76125278dab26cd331c240a3fd2e415f57090d8a4e9be416e52e1392365b9eff",
+  "record_type": "OPERATOR_PROVISIONED_PROJECT",
+  "recorded_at": "2026-09-22",
+  "recorded_by": "Claude Code",
+  "schema": "vidtoolz.resolveOperatorProvisionedProject.v1",
+  "write_authority": "NONE"
+}
