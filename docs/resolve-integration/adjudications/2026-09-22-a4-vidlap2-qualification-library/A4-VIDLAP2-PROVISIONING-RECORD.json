@@ -1,0 +1,95 @@
+{
+  "approval_basis": "Mikko's 2026-09-22 R7 instruction: governedly provision a VIDLAP2-specific qualification Disk Project Library and fixture using the additive host-extension pattern established for PRESTO, then qualify VIDLAP2 read-only. Confirmation on review closes the adjudication.",
+  "approver": "Mikko",
+  "decision": {
+    "authorizes": [
+      "VIDLAP2 as an additional qualification host for the Hermes read-only facade live qualification",
+      "one local Disk Project Library named VIDTOOLZ Resolve Qualification v1 at the root above, instance b714a6ea-\u2026",
+      "one host-specific fixture VIDTOOLZ_RESOLVE_QUAL_V1_VIDLAP2 with two empty timelines (fresh UUIDs)",
+      "bounded provisioning writes: CreateProject, SetSetting x4 (25 fps, 1920x1080), CreateEmptyTimeline x2, SetCurrentTimeline, SaveProject \u2014 journaled, inside the new library only",
+      "subsequent read-only facade qualification of VIDLAP2"
+    ],
+    "does_not_authorize": [
+      "production writes",
+      "EKA/nelja/Local Database mutation or contact",
+      "Hermes write capability",
+      "persistent workers (F-10/F-11)",
+      "Network scripting",
+      "copying vidnux/PRESTO fixture bytes or reusing their UUIDs (vidnux 7ac4210e/933dc179/43868e12; PRESTO 38609cb5/01bc28e2/aac2ad87)",
+      "authoring or copying dblist.conf/activedb.conf",
+      "SetCurrentDatabase from any adapter",
+      "changes to frozen v1.20 bytes or to \u00a7A4's vidnux Phase 1 qualification host"
+    ],
+    "procedure": [
+      {
+        "action": "Root + tools staged under C:\\Users\\mjp77\\.vidtoolz-resolve-qualification; PROVISIONING-RECORD.json (STAGED, sha256 c90e57de\u2026), tools/fp_qual_vidlap2.py (f33303d8\u2026), tools/provision_fixture_vidlap2.py (3208276b\u2026); remote == local. No Resolve config touched.",
+        "actor": "Claude Code",
+        "status": "DONE 2026-09-22T03:56Z",
+        "step": 1
+      },
+      {
+        "action": "Resolve Project Manager > Project Libraries > Add Project Library > Disk; Name exactly VIDTOOLZ Resolve Qualification v1; Location = root above; connect; select it; do not create a project; leave Resolve running.",
+        "actor": "Mikko (operator, VIDLAP2 desktop)",
+        "status": "PENDING",
+        "step": 2
+      },
+      {
+        "action": "Prove via the frozen worker that the current database is this Disk library on host VIDLAP2; then run the fixture tool (refuses otherwise); fingerprint; independent raw-API re-fingerprint.",
+        "actor": "Claude Code (frozen worker via temporary tunnel, then ssh vidlap2, journaled)",
+        "status": "PENDING step 2",
+        "step": 3
+      },
+      {
+        "action": "Mint OPERATOR_PROVISIONED_PROJECT record; set on-disk status PROVISIONED; run the read-only VIDLAP2 facade lane; seal VIDLAP2 host record.",
+        "actor": "Claude Code",
+        "status": "PENDING step 3",
+        "step": 4
+      }
+    ],
+    "rollback": "Delete %USERPROFILE%\\.vidtoolz-resolve-qualification on VIDLAP2 and remove the library entry in the Resolve GUI; git revert this record."
+  },
+  "envelope": {
+    "acceptance_commit": "720b2d78313c7749f3516cb39fad1310e13027b2",
+    "authority_version": "1.20.0",
+    "host_name": "VIDLAP2",
+    "library_name": "VIDTOOLZ Resolve Qualification v1",
+    "library_root": "C:\\Users\\mjp77\\.vidtoolz-resolve-qualification\\VIDTOOLZ Resolve Qualification v1",
+    "library_uuid": "b714a6ea-6dbf-42a6-905c-87afab6e5df3",
+    "manifest_sha256": "29216e6bd6024a8e4e35b0e77ac2aa7fbba8fa34c2a222b9145f93bb81cfedfb"
+  },
+  "finding": {
+    "answer": "NO",
+    "evidence": [
+      "\u00a7A4 and A3 (10e8e398): vidnux-only",
+      "doctrine closure 2026-09-20: no qualification library on Windows hosts",
+      "VIDLAP2 dblist.conf 2026-09-22T03:55Z: Local Database (DISK), EKA192.168.50.199 (QPSQL), nelja192.168.50.199 (QPSQL) only; activedb Local Database / EKA"
+    ],
+    "question": "Was VIDTOOLZ Resolve Qualification v1 ever provisioned for VIDLAP2?"
+  },
+  "frozen_bytes_modified": false,
+  "host_identity": {
+    "address_observed_2026_09_22": "192.168.50.233 (transport, not identity)",
+    "hostname": "VIDLAP2",
+    "machine_guid_prefix": "40086c1a",
+    "os": "Windows 11 Pro 10.0.26200",
+    "ssh_host_key_ed25519_sha256": "CCko0i+bWyHtzmGywsY8STtNgF1DWURuegL/4QtBUIo",
+    "user": "mjp77",
+    "userprofile": "C:\\Users\\mjp77"
+  },
+  "observations": {
+    "python": "3.10.11 (py -3)",
+    "resolve_exe_version": "21.1.0.14",
+    "resolve_pid_live": 18352,
+    "resolve_started_utc": "2026-09-22T03:53:33Z",
+    "scripting_mode_config": "LOCAL (config.dat Mode=1)",
+    "scripting_module_import": "OK",
+    "worker_bytes_on_vidlap2": "371caf131e5d21cdb8b5f3e505934154b7ee835427d25d9683d51013d345f4b3"
+  },
+  "record_class": "A4 host/library extension for the Hermes read-only facade live qualification \u2014 VIDLAP2 (governance record, additive, outside the frozen v1.20 bundle; same class as 2026-09-22-a4-presto-qualification-library)",
+  "record_id": "04eb949676f947b418544f262163efc1869422afdbb1249568e00302bd6fa3da",
+  "record_type": "PROVISIONING_RECORD",
+  "recorded_at": "2026-09-22",
+  "recorded_by": "Claude Code",
+  "schema": "vidtoolz.resolveHostLibraryExtension.v1",
+  "write_authority": "NONE"
+}
