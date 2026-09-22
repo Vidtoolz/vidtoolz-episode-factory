@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""VIDTOOLZ Resolve worker — production-read CANDIDATE 0.2.0 (derived from frozen Phase 1 0.1.1, READ ONLY).
+"""VIDTOOLZ Resolve worker — production-read CANDIDATE 0.4.0 (derived from frozen Phase 1 0.1.1, READ ONLY).
 
 Adds an explicit read profile (--mode). QUALIFICATION_READ keeps the frozen 0.1.1 library-gate behaviour unchanged.
 PRODUCTION_READ (v1: vidnux/Linux only) authorizes reads ONLY inside an ISOLATED_DISK_SESSION: an ACCEPTED human authority is
@@ -21,11 +21,11 @@ stdlib only (Python >= 3.10).
 saturation state + health outside the Resolve path (F-02), controller-path liveness
 probe (F-03), security/protocol failure journaling with lock+fsync (F-04), and the
 qualification-library gate (--require-library) demanded by v1.18 §A4."""
-import argparse, datetime, hashlib, hmac, json, os, platform, re, socket, subprocess, sys, threading, time, uuid
+import fnmatch, argparse, datetime, hashlib, hmac, json, os, platform, re, socket, subprocess, sys, threading, time, uuid
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutTimeout
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-WORKER_VERSION = "0.3.0-production-read-isolated-session-candidate"
+WORKER_VERSION = "0.4.0-production-read-attested-session-candidate"
 DERIVED_FROM = {"component": "resolve-control-plane phase1 0.1.1", "commit": "77c26103dfe88c448267a9c1efe7f34a20a39375", "worker_sha256": "371caf131e5d21cdb8b5f3e505934154b7ee835427d25d9683d51013d345f4b3"}
 READ_PROFILES = ("QUALIFICATION_READ", "PRODUCTION_READ")
 POLICY_SCHEMA = "vidtoolz.resolveProductionReadRuntimePolicy.v1"
@@ -219,12 +219,15 @@ def load_production_policy(path, expected_sha256, authority_path, host_id, own_s
     if set(pprojs) - set(aprojs): _refuse("AUTHORITY_SOURCE_MISMATCH", "policy grants a project the accepted authority does not")
     return pol, rec
 
-# ---------------------------------------------------------------- sealed isolated session profile
+# ---------------------------------------------------------------- sealed isolated session profile (exact tree) + runtime attestation
+NONCE_ENV_KEY = "VRC_SESSION_NONCE"                 # launcher-generated, post-seal, unpredictable: a pre-existing process cannot carry it
+ATTESTATION_SCHEMA = "vidtoolz.resolveProductionReadRuntimeAttestation.v1"
+
 def load_session_profile(path, expected_sha256, policy, policy_sha256, authority_sha256, own_sha256, host_id):
     """The sealed profile is the link between the accepted policy and a concrete Resolve session: it names the profile directory the
-    session must be launched with, the exact one-library registration, the physical root identity and the seal instant the process must
-    postdate. Governed content is deterministic and separately digested; runtime provenance (seal instant, absolute root) is recorded
-    beside it, so regeneration from the same authority is reproducible."""
+    session must be launched with, the exact one-library registration, the EXACT tree that directory may contain, the physical identity
+    of the root and the seal instant the process must postdate. Governed content is deterministic and separately digested; runtime
+    provenance (seal instant, absolute root, root device/inode) is recorded beside it."""
     try: raw = open(path, "rb").read()
     except OSError as e: _refuse("SESSION_PROFILE_MISSING", "session profile manifest unavailable", cause=type(e).__name__)
     if sha(raw) != expected_sha256: _refuse("SESSION_PROFILE_PIN_MISMATCH", "session profile digest does not match the pinned digest", expected=expected_sha256, actual=sha(raw))
@@ -245,47 +248,157 @@ def load_session_profile(path, expected_sha256, policy, policy_sha256, authority
         _refuse("SESSION_PROFILE_MISMATCH", "session profile library differs from the policy grant")
     if sorted(gov.get("projects") or []) != sorted(policy["projects"]): _refuse("SESSION_PROFILE_MISMATCH", "session profile projects differ from the policy grant")
     if gov.get("registration_line") != f'{glib["name"]}:{glib["canonical_root"]}::::DISK': _refuse("SESSION_PROFILE_INVALID", "registration line is not the single authorized Disk registration")
+    env = gov.get("profile_env")
+    if not isinstance(env, dict) or not env or any(not _lit(k) or not isinstance(v, str) for k, v in env.items()):
+        _refuse("SESSION_PROFILE_INVALID", "profile_env is not a literal variable->relative-path map")
+    if NONCE_ENV_KEY in env: _refuse("SESSION_PROFILE_INVALID", "the session nonce is not a profile path variable")
+    port = gov.get("script_server_port")
+    if not isinstance(port, int) or isinstance(port, bool) or not (0 < port < 65536): _refuse("SESSION_PROFILE_INVALID", "profile does not name a valid scripting port")
+    binary = gov.get("resolve_binary")
+    if not isinstance(binary, dict) or not _abs_local_dir(str(binary.get("realpath") or "")) or not _sha_hex(binary.get("sha256")) or not isinstance(binary.get("bytes"), int):
+        _refuse("SESSION_PROFILE_INVALID", "profile does not pin the Resolve executable by realpath, size and sha256")
+    tree, dirs = gov.get("tree"), gov.get("dirs")
+    if not isinstance(tree, dict) or not tree or any(not _rel_member(p) or not _sha_hex((m or {}).get("sha256")) for p, m in tree.items()):
+        _refuse("SESSION_PROFILE_INVALID", "profile does not carry an exact sealed file tree")
+    if not isinstance(dirs, list) or any(not _rel_member(d) for d in dirs): _refuse("SESSION_PROFILE_INVALID", "profile does not carry its exact directory set")
+    for key in ("volatile_patterns", "constrained"):
+        v = gov.get(key)
+        if not isinstance(v, list) or any(not _rel_member(x, allow_glob=(key == "volatile_patterns")) for x in v):
+            _refuse("SESSION_PROFILE_INVALID", f"profile does not carry a bounded {key} list")
+    if set(gov["constrained"]) - set(tree): _refuse("SESSION_PROFILE_INVALID", "a constrained path is not part of the sealed tree")
     root = prov.get("profile_root")
     if not _abs_local_dir(root or ""): _refuse("SESSION_PROFILE_INVALID", "profile_root must be an absolute local directory")
+    for k in ("profile_root_dev", "profile_root_ino"):
+        if not isinstance(prov.get(k), int) or isinstance(prov.get(k), bool): _refuse("SESSION_PROFILE_INVALID", "profile root physical identity is not pinned")
     if not isinstance(prov.get("seal_epoch"), int) or prov["seal_epoch"] <= 0: _refuse("SESSION_PROFILE_INVALID", "profile has no seal instant")
-    files = prov.get("files")
-    if not isinstance(files, dict) or not files: _refuse("SESSION_PROFILE_INVALID", "profile records no file digests")
+    if not isinstance(prov.get("seal_boot_time"), int) or prov["seal_boot_time"] <= 0: _refuse("SESSION_PROFILE_INVALID", "profile does not record the boot it was sealed under")
+    if not isinstance(prov.get("seal_uptime"), (int, float)) or isinstance(prov.get("seal_uptime"), bool) or prov["seal_uptime"] <= 0:
+        _refuse("SESSION_PROFILE_INVALID", "profile does not record the monotonic (boot-relative) instant it was sealed at")
+    if prov.get("registration_relpath") not in tree: _refuse("SESSION_PROFILE_INVALID", "the registration file is not part of the sealed tree")
     return prof, gov, prov
 
-def verify_profile_files(prov, gov):
-    """Every sealed profile file must still hash to its recorded value, and the registration file must still be exactly the one
-    authorized Disk line. A profile or registration edited after the seal fails the next operation."""
+def _sha_hex(v): return isinstance(v, str) and bool(re.fullmatch(r"[0-9a-f]{64}", v))
+
+def _rel_member(p, allow_glob=False):
+    """A relative path inside the profile: no absolute form, no '.'/'..', no backslash, no control characters."""
+    if not isinstance(p, str) or not p or p != p.strip() or p.startswith("/") or "\\" in p: return False
+    if any(c in p for c in "\n\r\t\0"): return False
+    if not allow_glob and any(c in p for c in "*?["): return False
+    return all(seg not in ("", ".", "..") for seg in p.split("/"))
+
+def _volatile(rel, patterns):
+    """Bounded allowlist for runtime state Resolve legitimately creates. Never authority-bearing, never used for identity."""
+    for pat in patterns:
+        if pat.endswith("/**"):
+            if rel == pat[:-3] or rel.startswith(pat[:-2]): return True
+        elif fnmatch.fnmatchcase(rel, pat): return True
+    return False
+
+def verify_profile_tree(prov, gov):
+    """The seal describes the profile EXACTLY (ISOR-F05). Every sealed file must still hash to its recorded value, every sealed
+    directory must still be a directory, and NOTHING else may exist under the root except the bounded runtime-volatile allowlist.
+    Symlinks are refused anywhere: a link could redirect a sealed path out of the profile."""
     root = prov["profile_root"]
-    for rel, want in sorted(prov["files"].items()):
-        p = os.path.join(root, rel)
-        try: got = sha(open(p, "rb").read())
+    tree, dirs, volatile = gov["tree"], set(gov["dirs"]), gov["volatile_patterns"]
+    actual_files, actual_dirs = {}, set()
+    for dirpath, dirnames, filenames in os.walk(root, followlinks=False):
+        for name in list(dirnames):
+            full = os.path.join(dirpath, name)
+            if os.path.islink(full): _refuse("SESSION_PROFILE_SYMLINK", "the sealed profile contains a symlinked directory", path=os.path.relpath(full, root))
+            actual_dirs.add(os.path.relpath(full, root))
+        for name in filenames:
+            full = os.path.join(dirpath, name); rel = os.path.relpath(full, root)
+            if os.path.islink(full): _refuse("SESSION_PROFILE_SYMLINK", "the sealed profile contains a symlink", path=rel)
+            if not os.path.isfile(full): _refuse("SESSION_PROFILE_EXTRANEOUS", "the sealed profile contains a non-regular file", path=rel)
+            actual_files[rel] = full
+    missing = sorted(set(tree) - set(actual_files))
+    if missing: _refuse("SESSION_PROFILE_MUTATED", "sealed profile files are missing", files=missing[:8])
+    for rel in sorted(set(dirs) - actual_dirs): _refuse("SESSION_PROFILE_MUTATED", "a sealed profile directory is missing", path=rel)
+    extras = sorted(rel for rel in actual_files if rel not in tree and not _volatile(rel, volatile))
+    if extras: _refuse("SESSION_PROFILE_EXTRANEOUS", "the profile contains files the seal does not describe", files=extras[:8])
+    extra_dirs = sorted(d for d in actual_dirs if d not in dirs and not _volatile(d, volatile))
+    if extra_dirs: _refuse("SESSION_PROFILE_EXTRANEOUS", "the profile contains directories the seal does not describe", dirs=extra_dirs[:8])
+    constrained = set(gov["constrained"])
+    for rel, meta in sorted(tree.items()):
+        try: data = open(actual_files[rel], "rb").read()
         except OSError as e: _refuse("SESSION_PROFILE_MUTATED", "sealed profile file is unreadable", file=rel, cause=type(e).__name__)
-        if got != want: _refuse("SESSION_PROFILE_MUTATED", "sealed profile file changed after the seal", file=rel)
+        if rel in constrained: verify_constrained(rel, data, gov)
+        elif sha(data) != meta["sha256"]: _refuse("SESSION_PROFILE_MUTATED", "sealed profile file changed after the seal", file=rel)
     regfile = os.path.join(root, prov["registration_relpath"])
-    try: text = open(regfile, "rb").read().decode("utf-8", "replace")
-    except OSError: _refuse("SESSION_PROFILE_MUTATED", "profile registration file unreadable")
-    lines = [l for l in text.splitlines() if l.strip()]
+    lines = [l for l in open(regfile, "rb").read().decode("utf-8", "replace").splitlines() if l.strip()]
     if lines != [gov["registration_line"]]:
         _refuse("SESSION_PROFILE_MUTATED", "profile registration is not exactly the one authorized Disk library", entries=len(lines))
     return regfile
 
+def verify_constrained(rel, data, gov):
+    """`.activedb` is the one sealed file Resolve itself may legitimately rewrite. It is not free: every entry must still select the
+    single authorized local Disk library, and any network entry refuses."""
+    name = gov["library"]["name"]
+    for line in data.decode("utf-8", "replace").splitlines():
+        line = line.strip()
+        if not line: continue
+        kind, _, value = line.partition(":")
+        if kind.rstrip("*").lower() != "disk" or value != name:
+            _refuse("SESSION_PROFILE_MUTATED", "the active-database pointer names something other than the authorized Disk library", file=rel, entry=line[:120])
+
 def resolve_physical_root(path):
-    """Canonical physical identity of the authorized root: strict realpath (symlinks resolved), must exist, must be a directory, plus
-    device/inode. Textual aliases collapse; a different physical directory can never pass."""
+    """Canonical physical identity: strict realpath (symlinks resolved), must exist, must be a directory, plus device/inode."""
     try: rp = os.path.realpath(path, strict=True); st = os.stat(rp)
-    except (OSError, ValueError) as e: _refuse("LIBRARY_IDENTITY_UNAVAILABLE", "authorized Disk root does not resolve to an existing directory", path=path, cause=type(e).__name__)
-    if not os.path.isdir(rp): _refuse("LIBRARY_IDENTITY_UNAVAILABLE", "authorized Disk root is not a directory", path=path)
+    except (OSError, ValueError) as e: _refuse("LIBRARY_IDENTITY_UNAVAILABLE", "path does not resolve to an existing directory", path=path, cause=type(e).__name__)
+    if not os.path.isdir(rp): _refuse("LIBRARY_IDENTITY_UNAVAILABLE", "path is not a directory", path=path)
     return {"realpath": rp, "dev": st.st_dev, "ino": st.st_ino}
+
+def verify_profile_root(prov):
+    """The profile root itself is pinned (ISOR-F04): it must still be its own realpath and the same physical directory."""
+    root = prov["profile_root"]
+    phys = resolve_physical_root(root)
+    if phys["realpath"] != root or phys["dev"] != prov["profile_root_dev"] or phys["ino"] != prov["profile_root_ino"]:
+        _refuse("SESSION_ROOT_IDENTITY_MISMATCH", "the profile root is not the physical directory that was sealed", expected={"realpath": root, "dev": prov["profile_root_dev"], "ino": prov["profile_root_ino"]}, actual=phys)
+    return phys
+
+def load_runtime_attestation(path, expected_sha256, gov, prov, session_sha256, policy_sha256, authority_sha256, own_sha256):
+    """The launcher's record of the session it created: which process it started, from which profile, with which nonce. Written after
+    the seal and outside the profile root, digest-pinned on the worker command line, and re-read at every operation."""
+    try: raw = open(path, "rb").read()
+    except OSError as e: _refuse("RUNTIME_ATTESTATION_MISSING", "runtime session attestation unavailable", cause=type(e).__name__)
+    if sha(raw) != expected_sha256: _refuse("RUNTIME_ATTESTATION_PIN_MISMATCH", "runtime attestation digest does not match the pinned digest", expected=expected_sha256, actual=sha(raw))
+    try: att = json.loads(raw)
+    except ValueError: _refuse("RUNTIME_ATTESTATION_INVALID", "runtime attestation is not valid JSON")
+    if not isinstance(att, dict) or att.get("schema") != ATTESTATION_SCHEMA: _refuse("RUNTIME_ATTESTATION_INVALID", "runtime attestation has the wrong schema")
+    if att.get("attestation_sha256") != canonical_sha256({k: v for k, v in att.items() if k != "attestation_sha256"}):
+        _refuse("RUNTIME_ATTESTATION_INVALID", "runtime attestation body does not match its own digest")
+    for field, want, reason in (("session_id", gov.get("session_id"), "SESSION_PROFILE_MISMATCH"),
+                                ("profile_sha256", session_sha256, "SESSION_PROFILE_MISMATCH"),
+                                ("policy_sha256", policy_sha256, "SESSION_PROFILE_MISMATCH"),
+                                ("authority_sha256", authority_sha256, "SESSION_PROFILE_MISMATCH"),
+                                ("worker_sha256", own_sha256, "WORKER_IDENTITY_MISMATCH"),
+                                ("facade_commit", ACCEPTED_FACADE_COMMIT, "FACADE_IDENTITY_MISMATCH")):
+        if want is not None and att.get(field) != want: _refuse(reason, f"runtime attestation {field} does not match this chain", field=field)
+    if att.get("profile_root") != prov["profile_root"] or att.get("profile_root_dev") != prov["profile_root_dev"] or att.get("profile_root_ino") != prov["profile_root_ino"]:
+        _refuse("SESSION_ROOT_IDENTITY_MISMATCH", "runtime attestation was made for a different profile root")
+    if att.get("script_server_port") != gov["script_server_port"]: _refuse("RUNTIME_ATTESTATION_INVALID", "runtime attestation names another scripting port")
+    if not _sha_hex(att.get("nonce_sha256")): _refuse("RUNTIME_ATTESTATION_INVALID", "runtime attestation carries no session-nonce digest")
+    exe = att.get("executable")
+    if not isinstance(exe, dict) or exe.get("realpath") != gov["resolve_binary"]["realpath"] or exe.get("sha256") != gov["resolve_binary"]["sha256"] or exe.get("bytes") != gov["resolve_binary"]["bytes"]:
+        _refuse("SESSION_EXECUTABLE_MISMATCH", "runtime attestation names another Resolve executable than the sealed profile")
+    for k in ("resolve_pid", "resolve_start_ticks", "boot_time", "created_epoch", "launcher_pid"):
+        if not isinstance(att.get(k), int) or isinstance(att.get(k), bool) or att[k] < 0: _refuse("RUNTIME_ATTESTATION_INVALID", f"runtime attestation field {k} is not a process fact")
+    if att["created_epoch"] < prov["seal_epoch"]: _refuse("RUNTIME_ATTESTATION_INVALID", "runtime attestation predates the profile seal")
+    return att
 
 # ---------------------------------------------------------------- Linux session/process attestation (real /proc facts only)
 class SystemProbe:
     """The only source of process facts. Injected into Worker() so offline tests can supply a deterministic probe; the production CLI
-    never passes one and never reads an environment switch (PRR-F06)."""
+    never passes one and never reads an environment switch."""
     def uid(self): return os.getuid()
     def boot_time(self):
         for l in open("/proc/stat"):
             if l.startswith("btime"): return int(l.split()[1])
         raise OSError("btime unavailable")
+    def uptime(self):
+        """Seconds since boot, from the SAME monotonic clock as a process's start ticks — so 'sealed before the process started' can be
+        decided exactly, instead of comparing against a wall-clock second that both events may share."""
+        return float(open("/proc/uptime").read().split()[0])
     def pids(self): return [int(p) for p in os.listdir("/proc") if p.isdigit()]
     def exe(self, pid):
         try: return os.path.realpath(os.readlink(f"/proc/{pid}/exe"))
@@ -305,46 +418,85 @@ class SystemProbe:
     def start_ticks(self, pid):
         try: return int(open(f"/proc/{pid}/stat").read().rsplit(")", 1)[1].split()[19])   # field 22, same technique as frozen Phase 1
         except (OSError, IndexError, ValueError): return None
-    def environ(self, pid):
+    def environ_entries(self, pid):
+        """RAW, ORDERED `KEY=VALUE` entries — never collapsed into a dict. glibc `getenv()` consumes the FIRST occurrence of a key
+        while a dict keeps the LAST; that divergence was a real bypass (ISOR-F01), so duplicates must stay visible to the caller."""
         try: raw = open(f"/proc/{pid}/environ", "rb").read()
         except OSError: return None
-        out = {}
+        out = []
         for item in raw.split(b"\0"):
-            if b"=" in item:
-                k, _, v = item.partition(b"=")
-                out[k.decode("utf-8", "replace")] = v.decode("utf-8", "replace")
+            if not item: continue
+            k, sep, v = item.partition(b"=")
+            if not sep: continue
+            out.append((k.decode("utf-8", "replace"), v.decode("utf-8", "replace")))
         return out
-    def listening_socket_pids(self, port):
-        """PIDs holding a LISTEN socket on this TCP port, resolved through /proc/net/tcp inodes and /proc/<pid>/fd — the endpoint the
-        Resolve scripting library connects to on 127.0.0.1."""
+    def listen_inodes(self, port):
+        """EVERY LISTEN socket inode on this TCP port, IPv4 and IPv6. Returns None if a table cannot be read: an unreadable table
+        makes the endpoint unverifiable, never 'empty'."""
         inodes = set()
         for f in ("/proc/net/tcp", "/proc/net/tcp6"):
             try: lines = open(f).read().splitlines()[1:]
-            except OSError: continue
+            except OSError: return None
             for ln in lines:
                 p = ln.split()
                 if len(p) < 10 or p[3] != "0A": continue
                 try:
                     if int(p[1].split(":")[1], 16) == port: inodes.add(p[9])
-                except (ValueError, IndexError): continue
-        if not inodes: return set()
-        owners = set()
+                except (ValueError, IndexError): return None
+        return inodes
+    def socket_inode_owners(self, inodes):
+        """inode -> set(pids) holding it, plus the pids whose fd directory could not be read. An inode that no readable process owns is
+        UNATTRIBUTED (ISOR-F02): it may belong to one of the unreadable processes, so it can never be assumed harmless."""
+        owners, unreadable = {}, []
         for pid in self.pids():
             try: fds = os.listdir(f"/proc/{pid}/fd")
-            except OSError: continue
+            except OSError: unreadable.append(pid); continue
             for fd in fds:
                 try: tgt = os.readlink(f"/proc/{pid}/fd/{fd}")
                 except OSError: continue
-                if tgt.startswith("socket:[") and tgt[8:-1] in inodes: owners.add(pid); break
-        return owners
+                if tgt.startswith("socket:[") and tgt[8:-1] in inodes: owners.setdefault(tgt[8:-1], set()).add(pid)
+        return owners, unreadable
     def stat_file(self, path):
         try:
-            st = os.stat(path); return {"realpath": os.path.realpath(path), "bytes": st.st_size, "uid": st.st_uid}
+            st = os.stat(path)
+            return {"realpath": os.path.realpath(path), "bytes": st.st_size, "uid": st.st_uid, "dev": st.st_dev,
+                    "ino": st.st_ino, "mtime_ns": st.st_mtime_ns, "ctime_ns": st.st_ctime_ns}
         except OSError: return None
+    def hash_file(self, path):
+        h = hashlib.sha256()
+        try:
+            with open(path, "rb") as fh:
+                for chunk in iter(lambda: fh.read(1 << 22), b""): h.update(chunk)
+        except OSError: return None
+        return h.hexdigest()
 
-def attest_isolated_session(probe, gov, prov, hz=None):
-    """Bind the live Resolve session to the sealed profile. Every clause is a real, observable Linux fact; any failure refuses before the
-    scripting library is touched. Returns the attested session identity."""
+def env_value(entries, key):
+    """Exactly one occurrence, or refuse. Zero is missing; two or more is AMBIGUOUS and must deny — the kernel keeps both, glibc reads
+    the first, a naive parser reads the last, and that gap is exactly how an unauthorized profile was smuggled past attestation."""
+    hits = [v for k, v in entries if k == key]
+    if not hits: _refuse("SESSION_ENV_MISSING", "the Resolve process does not carry a required isolated-profile variable", variable=key)
+    if len(hits) > 1: _refuse("SESSION_ENV_AMBIGUOUS", "the Resolve process carries duplicate entries for a security-relevant variable; the session is ambiguous", variable=key, occurrences=len(hits))
+    return hits[0]
+
+def verify_executable(probe, gov, cache=None):
+    """Realpath + size + sha256 of the running Resolve binary. The digest is recomputed whenever the inode's identity, size, mtime or
+    ctime changes; an in-place edit always changes ctime, which an unprivileged process cannot roll back (ISOR-F06)."""
+    want = gov["resolve_binary"]
+    st = probe.stat_file(want["realpath"])
+    if not st or st["realpath"] != want["realpath"]: _refuse("SESSION_EXECUTABLE_MISMATCH", "the pinned Resolve executable is missing or moved", expected=want["realpath"])
+    if st["bytes"] != want["bytes"]: _refuse("SESSION_EXECUTABLE_MISMATCH", "the Resolve executable differs from the sealed identity", expected_bytes=want["bytes"], actual_bytes=st["bytes"])
+    key = (st["dev"], st["ino"], st["bytes"], st["mtime_ns"], st["ctime_ns"])
+    digest = cache.get(key) if isinstance(cache, dict) else None
+    if digest is None:
+        digest = probe.hash_file(want["realpath"])
+        if digest is None: _refuse("SESSION_EXECUTABLE_MISMATCH", "the Resolve executable could not be read for hashing", path=want["realpath"])
+        if isinstance(cache, dict): cache.clear(); cache[key] = digest
+    if digest != want["sha256"]: _refuse("SESSION_EXECUTABLE_MISMATCH", "the Resolve executable bytes differ from the sealed sha256", expected=want["sha256"], actual=digest)
+    return st
+
+def attest_isolated_session(probe, gov, prov, att, hz=None, exe_cache=None, attempts=3):
+    """Bind the live Resolve session to the sealed profile and to the launcher's runtime attestation. Every clause is a real, observable
+    Linux fact; any failure refuses before the scripting library is touched."""
     binary = gov["resolve_binary"]["realpath"]
     pids = [p for p in probe.pids() if probe.exe(p) == binary]
     if len(pids) != 1:
@@ -352,34 +504,65 @@ def attest_isolated_session(probe, gov, prov, hz=None):
                 "exactly one Resolve process must be running for a production-read session" if pids else "no Resolve process is running for this session",
                 resolve_processes=len(pids))
     pid = pids[0]
+    if pid != att["resolve_pid"]: _refuse("SESSION_NOT_ATTESTED", "the running Resolve is not the process the launcher created", attested_pid=att["resolve_pid"], actual_pid=pid)
     if probe.proc_uid(pid) != probe.uid(): _refuse("SESSION_OWNER_MISMATCH", "the Resolve process is not owned by this user", pid=pid)
-    st = probe.stat_file(binary)
-    if not st or st["realpath"] != binary: _refuse("SESSION_EXECUTABLE_MISMATCH", "the pinned Resolve executable is missing or moved", expected=binary)
-    if st["bytes"] != gov["resolve_binary"]["bytes"]: _refuse("SESSION_EXECUTABLE_MISMATCH", "the Resolve executable differs from the sealed identity", expected_bytes=gov["resolve_binary"]["bytes"], actual_bytes=st["bytes"])
+    verify_executable(probe, gov, exe_cache)
+    hz = hz or os.sysconf("SC_CLK_TCK")
+    boot = probe.boot_time()
+    if boot != att["boot_time"] or boot != prov["seal_boot_time"]:
+        _refuse("SESSION_NOT_ATTESTED", "the machine booted since the profile was sealed and the session attested; both are stale",
+                attested=att["boot_time"], sealed=prov["seal_boot_time"], actual=boot)
     ticks = probe.start_ticks(pid)
     if ticks is None: _refuse("SESSION_PROCESS_UNREADABLE", "process start time unavailable", pid=pid)
-    hz = hz or os.sysconf("SC_CLK_TCK")
-    start_epoch = int(probe.boot_time() + ticks / hz)
-    if start_epoch < prov["seal_epoch"]:
-        _refuse("SESSION_PREDATES_PROFILE", "the Resolve process started before the isolated profile was sealed; a pre-existing session is never eligible",
-                process_start_epoch=start_epoch, profile_seal_epoch=prov["seal_epoch"])
-    env = probe.environ(pid)
-    if not env: _refuse("SESSION_PROCESS_UNREADABLE", "process environment unavailable; the session cannot be attested", pid=pid)
-    for var, rel in gov["profile_env"].items():
+    if ticks != att["resolve_start_ticks"]: _refuse("SESSION_RESTARTED", "the Resolve process start time differs from the attested session; the pid was reused or the session was replaced", attested=att["resolve_start_ticks"], actual=ticks)
+    start_uptime = ticks / hz
+    if not start_uptime > prov["seal_uptime"]:
+        # Both instants come from the SAME monotonic boot clock, so 'strictly after' is exact here; comparing wall-clock seconds would
+        # make a seal and a launch inside the same second indistinguishable (ISOR-F03).
+        _refuse("SESSION_PREDATES_PROFILE", "the Resolve process did not start strictly after the isolated profile was sealed; a pre-existing session is never eligible",
+                process_start_uptime=round(start_uptime, 3), profile_seal_uptime=prov["seal_uptime"])
+    start = boot + start_uptime
+    entries = probe.environ_entries(pid)
+    if not entries: _refuse("SESSION_PROCESS_UNREADABLE", "process environment unavailable; the session cannot be attested", pid=pid)
+    for var, rel in sorted(gov["profile_env"].items()):
         want = os.path.join(prov["profile_root"], rel) if rel else prov["profile_root"]
-        if env.get(var) != want:
-            _refuse("SESSION_PROFILE_MISMATCH", "the Resolve process was not launched with the sealed isolated profile", variable=var, expected=want, actual=env.get(var))
-    port = gov["script_server_port"]
-    owners = probe.listening_socket_pids(port)
-    if not owners: _refuse("SESSION_HANDLE_UNBOUND", "no process owns the Resolve scripting endpoint; the API handle cannot be bound to this session", port=port)
-    for owner in sorted(owners):
-        seen, cur, ok = set(), owner, False
-        while cur and cur not in seen:
-            if cur == pid: ok = True; break
-            seen.add(cur); cur = probe.ppid(cur)
-        if not ok:
-            _refuse("SESSION_HANDLE_UNBOUND", "the Resolve scripting endpoint is owned by a process outside the attested session", port=port, owner_pid=owner, session_pid=pid)
-    return {"pid": pid, "start_epoch": start_epoch, "executable": binary, "uid": probe.uid(), "script_server_port": port, "endpoint_owner_pids": sorted(owners)}
+        got = env_value(entries, var)                       # exactly one occurrence or refuse
+        if got != want:
+            _refuse("SESSION_PROFILE_MISMATCH", "the Resolve process was not launched with the sealed isolated profile", variable=var, expected=want, actual=got)
+    if sha(env_value(entries, NONCE_ENV_KEY).encode()) != att["nonce_sha256"]:
+        _refuse("SESSION_NONCE_MISMATCH", "the Resolve process does not carry the session nonce this attestation was created with")
+    owners = attest_endpoint(probe, gov["script_server_port"], pid, attempts)
+    return {"pid": pid, "start": start, "start_ticks": ticks, "executable": binary, "uid": probe.uid(),
+            "script_server_port": gov["script_server_port"], "endpoint_owner_pids": sorted(owners),
+            "session_id": gov.get("session_id"), "nonce_id": att["nonce_sha256"][:16]}
+
+def attest_endpoint(probe, port, pid, attempts=3):
+    """CLOSED listener law (ISOR-F02): every LISTEN socket on the scripting port must be attributable to a process, and every such
+    process must be the attested Resolve or a descendant of it. An inode no readable process owns, an unreadable socket table, or a
+    listener set that changes while it is being mapped, all refuse — 'unknown but probably harmless' is not a result."""
+    last = None
+    for _ in range(max(1, attempts)):
+        first = probe.listen_inodes(port)
+        if first is None: _refuse("SESSION_ENDPOINT_UNVERIFIABLE", "the kernel socket tables could not be read; endpoint ownership is unverifiable", port=port)
+        if not first: _refuse("SESSION_HANDLE_UNBOUND", "no process owns the Resolve scripting endpoint; the API handle cannot be bound to this session", port=port)
+        owners, unreadable = probe.socket_inode_owners(first)
+        second = probe.listen_inodes(port)
+        if second is None: _refuse("SESSION_ENDPOINT_UNVERIFIABLE", "the kernel socket tables could not be read; endpoint ownership is unverifiable", port=port)
+        if first != second: last = ("SESSION_ENDPOINT_UNSTABLE", len(first ^ second)); continue
+        unattributed = sorted(first - set(owners))
+        if unattributed:
+            _refuse("SESSION_ENDPOINT_UNATTRIBUTED", "a listening socket on the scripting port belongs to no process this worker can attribute", port=port,
+                    unattributed=unattributed[:8], unreadable_processes=len(unreadable))
+        for inode in sorted(first):
+            for owner in sorted(owners[inode]):
+                seen, cur, ok = set(), owner, False
+                while cur and cur not in seen:
+                    if cur == pid: ok = True; break
+                    seen.add(cur); cur = probe.ppid(cur)
+                if not ok:
+                    _refuse("SESSION_HANDLE_UNBOUND", "the Resolve scripting endpoint is owned by a process outside the attested session", port=port, owner_pid=owner, session_pid=pid)
+        return {p for pids in owners.values() for p in pids}
+    _refuse("SESSION_ENDPOINT_UNSTABLE", "the set of listeners on the scripting port kept changing while it was being attributed", port=port, delta=last and last[1])
 
 # ---------------------------------------------------------------- SSH-session lifetime anchor (F-03 part 1)
 # Live finding (2026-09-20, VIDLAP2): when the controlling ssh session dies, Windows OpenSSH does NOT kill the
@@ -563,7 +746,7 @@ class ResolvePool:
 # ---------------------------------------------------------------- Worker
 class Worker:
     def __init__(self, host_id, secret, state_dir, api, require_library=None, mode="QUALIFICATION_READ", policy_path=None, policy_sha256=None,
-                 authority_path=None, session_path=None, session_sha256=None, probe=None):
+                 authority_path=None, session_path=None, session_sha256=None, attestation_path=None, attestation_sha256=None, probe=None):
         hn = socket.gethostname()
         if hn.lower() != host_id.lower(): raise SystemExit(f"HOST_ID_MISMATCH: --host-id {host_id} but hostname is {hn}")
         self.host_id, self.secret, self.state_dir, self.api = host_id, secret, state_dir, api
@@ -571,20 +754,24 @@ class Worker:
         if mode not in READ_PROFILES: raise SystemExit(f"REFUSED: unknown --mode {mode!r}")
         self.mode, self.policy_path, self.policy_sha256, self.authority_path = mode, policy_path, policy_sha256, authority_path
         self.session_path, self.session_sha256 = session_path, session_sha256
+        self.attestation_path, self.attestation_sha256 = attestation_path, attestation_sha256
+        self.exe_cache = {}                          # sha256 keyed by (dev, ino, size, mtime_ns, ctime_ns); any in-place edit bumps ctime
         self.probe = probe or SystemProbe()          # constructor injection only; never selectable from the CLI or the environment
         self.session_identity, self._policy_cache = None, None
         self.own_sha256 = self.own_sha()             # reported identity; re-hashed per operation, never trusted from this cache
         if mode == "PRODUCTION_READ":
             if require_library: raise SystemExit("REFUSED: --require-library is a QUALIFICATION_READ gate; PRODUCTION_READ takes the production chain instead")
-            if not (policy_path and policy_sha256 and authority_path and session_path and session_sha256):
-                raise SystemExit("REFUSED: PRODUCTION_READ requires --production-authority, --production-policy, --production-policy-sha256, --production-session and --production-session-sha256")
+            if not (policy_path and policy_sha256 and authority_path and session_path and session_sha256 and attestation_path and attestation_sha256):
+                raise SystemExit("REFUSED: PRODUCTION_READ requires --production-authority, --production-policy(+sha256), --production-session(+sha256) and --production-runtime-attestation(+sha256)")
             if host_id not in PRODUCTION_HOSTS: raise SystemExit(f"REFUSED: production-read v1 supports only {PRODUCTION_HOSTS}; {host_id!r} is not authorizable")
             if platform.system() != PRODUCTION_PLATFORM: raise SystemExit("REFUSED: production-read v1 supports Linux only; Windows production reads are structurally unsupported")
             try:                                      # startup: the whole chain must verify before the socket binds
+                asha = sha(open(authority_path, "rb").read())
                 pol, _ = load_production_policy(policy_path, policy_sha256, authority_path, host_id, self.own_sha256)
-                load_session_profile(session_path, session_sha256, pol, policy_sha256, sha(open(authority_path, "rb").read()), self.own_sha256, host_id)
+                _, gov, prov = load_session_profile(session_path, session_sha256, pol, policy_sha256, asha, self.own_sha256, host_id)
+                load_runtime_attestation(attestation_path, attestation_sha256, gov, prov, session_sha256, policy_sha256, asha, self.own_sha256)
             except OpError as e: raise SystemExit(f"REFUSED: {e.message} {json.dumps(e.detail)}")
-        elif policy_path or policy_sha256 or authority_path or session_path or session_sha256:
+        elif policy_path or policy_sha256 or authority_path or session_path or session_sha256 or attestation_path or attestation_sha256:
             raise SystemExit("REFUSED: the production chain arguments are only valid with --mode PRODUCTION_READ")
         os.makedirs(state_dir, exist_ok=True)
         gpath = os.path.join(state_dir, "generation")
@@ -594,6 +781,7 @@ class Worker:
                          "worker_instance_id": uuid.uuid4().hex, "worker_generation": gen,
                          "worker_started_at": now_iso(), "worker_version": WORKER_VERSION, "protocol": PROTOCOL,
                          "read_profile": mode, "production_policy_sha256": policy_sha256, "session_profile_sha256": session_sha256,
+                         "runtime_attestation_sha256": attestation_sha256,
                          "worker_sha256": self.own_sha256, "derived_from": DERIVED_FROM}
         self.replay = ReplayGuard(os.path.join(state_dir, "replay.jsonl"))
         self.pool = ResolvePool()
@@ -601,7 +789,8 @@ class Worker:
         self.last_resolve = None                           # last successful snapshot summary {observed_at, available, version, project_uuid}
         self.journal_event({"event": "WORKER_START", "worker_instance_id": self.identity["worker_instance_id"], "worker_generation": gen,
                             "replay_entries_loaded": self.replay.loaded, "require_library": require_library and require_library[0],
-                            "read_profile": mode, "production_policy_sha256": policy_sha256, "session_profile_sha256": session_sha256, "worker_sha256": self.own_sha256})
+                            "read_profile": mode, "production_policy_sha256": policy_sha256, "session_profile_sha256": session_sha256,
+                            "runtime_attestation_sha256": attestation_sha256, "worker_sha256": self.own_sha256})
 
     # ---- journaling (F-04): one lock, fsync per line, never headers/keys/bodies
     def journal_event(self, rec):
@@ -654,7 +843,7 @@ class Worker:
     # policy | authority | profile | session | library | project (gates), resolve (Resolve state insufficient), pre-resolve (refused earlier).
     def new_authz(self):
         return ({"read_profile": "PRODUCTION_READ", "decision": "NOT_REACHED", "stage": None, "policy_sha256": self.policy_sha256,
-                 "session_profile_sha256": self.session_sha256} if self.mode == "PRODUCTION_READ"
+                 "session_profile_sha256": self.session_sha256, "runtime_attestation_sha256": self.attestation_sha256} if self.mode == "PRODUCTION_READ"
                 else {"read_profile": self.mode, "decision": "NOT_APPLICABLE"})
     def _deny(self, a, stage, err):
         a.update(decision="DENIED", stage=stage, reason=(err.detail or {}).get("reason") or err.code, code=err.code); raise err
@@ -673,29 +862,37 @@ class Worker:
         except OpError as e: self._deny(a, "authority" if (e.detail or {}).get("reason", "").startswith("AUTHORITY") else "policy", e)
         try: prof, gov, prov = load_session_profile(self.session_path, self.session_sha256, pol, self.policy_sha256, sha(open(self.authority_path, "rb").read()), own, self.host_id)
         except OpError as e: self._deny(a, "profile", e)
+        try: att = load_runtime_attestation(self.attestation_path, self.attestation_sha256, gov, prov, self.session_sha256, self.policy_sha256, sha(open(self.authority_path, "rb").read()), own)
+        except OpError as e: self._deny(a, "attestation", e)
         try:
-            verify_profile_files(prov, gov)
+            verify_profile_root(prov)
+            verify_profile_tree(prov, gov)
+        except OpError as e: self._deny(a, "profile", e)
+        try:
             phys = resolve_physical_root(gov["library"]["canonical_root"])
             if phys["realpath"] != gov["library"]["canonical_root"] or phys["dev"] != gov["library"]["physical_dev"] or phys["ino"] != gov["library"]["physical_ino"]:
                 _refuse("LIBRARY_NOT_AUTHORIZED", "the authorized root no longer resolves to the pinned physical identity", expected=gov["library"], actual=phys)
-        except OpError as e: self._deny(a, "profile" if (e.detail or {}).get("reason", "").startswith("SESSION_PROFILE") else "library", e)
+        except OpError as e: self._deny(a, "library", e)
         a["session_id"] = gov.get("session_id"); a["authority_sha256"] = gov.get("authority_sha256")
+        a["profile_sha256"] = self.session_sha256
+        a["profile_root"] = {"realpath": prov["profile_root"], "dev": prov["profile_root_dev"], "ino": prov["profile_root_ino"]}
+        a["executable_sha256"] = gov["resolve_binary"]["sha256"]
         a["library"] = {"kind": "Disk", "name": gov["library"]["name"], "canonical_root": phys["realpath"], "dev": phys["dev"], "ino": phys["ino"]}
-        return pol, rec, gov, prov
+        return pol, rec, gov, prov, att
 
     def attest_session(self, a):
         """Session provenance, established BEFORE the Resolve scripting library is touched. Also pins the attested process for this worker
         instance: a Resolve restart produces a different identity and every later read refuses until the operator seals/attests again."""
-        pol, rec, gov, prov = self.production_chain(a)
-        try: ident = attest_isolated_session(self.probe, gov, prov)
+        pol, rec, gov, prov, att = self.production_chain(a)
+        try: ident = attest_isolated_session(self.probe, gov, prov, att, exe_cache=self.exe_cache)
         except OpError as e: self._deny(a, "session", e)
         if self.session_identity is None: self.session_identity = ident
-        elif (ident["pid"], ident["start_epoch"]) != (self.session_identity["pid"], self.session_identity["start_epoch"]):
-            try: _refuse("SESSION_RESTARTED", "the attested Resolve session was replaced; a new session must be sealed and attested",
-                         attested=self.session_identity, observed={"pid": ident["pid"], "start_epoch": ident["start_epoch"]})
+        elif (ident["pid"], ident["start_ticks"]) != (self.session_identity["pid"], self.session_identity["start_ticks"]):
+            try: _refuse("SESSION_RESTARTED", "the attested Resolve session was replaced; a new session must be sealed, launched and attested",
+                         attested=self.session_identity, observed={"pid": ident["pid"], "start_ticks": ident["start_ticks"]})
             except OpError as e: self._deny(a, "session", e)
-        a["session"] = {"pid": ident["pid"], "start_epoch": ident["start_epoch"], "executable": ident["executable"],
-                        "endpoint_owner_pids": ident["endpoint_owner_pids"], "script_server_port": ident["script_server_port"]}
+        a["session"] = {"pid": ident["pid"], "start": ident["start"], "start_ticks": ident["start_ticks"], "executable": ident["executable"],
+                        "endpoint_owner_pids": ident["endpoint_owner_pids"], "script_server_port": ident["script_server_port"], "nonce_id": ident["nonce_id"]}
         a["allowed_projects"] = len(pol["projects"]); self._policy_cache = pol
         return pol
 
@@ -884,6 +1081,8 @@ def main():
     ap.add_argument("--production-authority", action=Once, help="PRODUCTION_READ: path to the ACCEPTED source authority record the policy was compiled from; bytes and acceptance semantics re-verified at every operation")
     ap.add_argument("--production-session", action=Once, help="PRODUCTION_READ: path to the sealed isolated session profile manifest")
     ap.add_argument("--production-session-sha256", action=Once, help="PRODUCTION_READ: pinned sha256 of the session profile manifest FILE; re-verified at every operation")
+    ap.add_argument("--production-runtime-attestation", action=Once, help="PRODUCTION_READ: path to the runtime session attestation written by tools/launch_isolated_session.py when it created the isolated Resolve session")
+    ap.add_argument("--production-runtime-attestation-sha256", action=Once, help="PRODUCTION_READ: pinned sha256 of the runtime attestation FILE; re-verified at every operation")
     a = ap.parse_args()
     if a.mode is None: a.mode = "QUALIFICATION_READ"
     if a.bind != BIND: raise SystemExit("LOOPBACK_ONLY: worker binds 127.0.0.1 only; refusing --bind " + a.bind)
@@ -894,7 +1093,8 @@ def main():
         name, _, root = a.require_library.partition("="); req = (name, root or None)
         if name in PROHIBITED_LIBRARIES: raise SystemExit("REFUSED: --require-library names a prohibited library")
     srv = ThreadingHTTPServer((BIND, a.port), Handler); srv.worker = Worker(a.host_id, secret, a.state_dir, load_production_api(), req, a.mode, a.production_policy, a.production_policy_sha256,
-                                                                       a.production_authority, a.production_session, a.production_session_sha256)
+                                                                       a.production_authority, a.production_session, a.production_session_sha256,
+                                                                       a.production_runtime_attestation, a.production_runtime_attestation_sha256)
     anchor = None
     if a.exit_with_session:
         anchor = find_session_anchor()
@@ -907,7 +1107,8 @@ def main():
             srv.worker.journal_event({"event": "CONTROLLER_PATH_LOST", "port": a.liveness_port, "misses": misses, "worker_instance_id": srv.worker.identity["worker_instance_id"]}); os._exit(0)
         watch_controller_path(a.liveness_port, a.liveness_interval, a.liveness_strikes, lost, srv.worker.journal_event)
     print(json.dumps({"worker_up": srv.worker.identity, "bind": f"{BIND}:{a.port}", "session_anchor_pid": anchor, "liveness_port": a.liveness_port,
-                      "require_library": req and req[0], "read_profile": a.mode, "production_policy_sha256": a.production_policy_sha256, "session_profile_sha256": a.production_session_sha256, "worker_sha256": srv.worker.own_sha256,
+                      "require_library": req and req[0], "read_profile": a.mode, "production_policy_sha256": a.production_policy_sha256, "session_profile_sha256": a.production_session_sha256,
+                      "runtime_attestation_sha256": a.production_runtime_attestation_sha256, "worker_sha256": srv.worker.own_sha256,
                       "replay_entries_loaded": srv.worker.replay.loaded}), flush=True); srv.serve_forever()
 
 if __name__ == "__main__": main()

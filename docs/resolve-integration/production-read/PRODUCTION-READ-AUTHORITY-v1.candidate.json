@@ -6,9 +6,9 @@
   "approved_at": null,
   "acceptance_record": null,
   "worker_identity": {
-    "component": "resolve-control-plane production-read candidate 0.3.0 (isolated session)",
-    "worker_sha256": "8caa235d956e13005c5e28208b8283646c6487391285503e76553686fe436527",
-    "commit": "branch claude/resolve-production-read-authority-20260922 (successor candidate to the REJECTED 59a5593d; see git)"
+    "component": "resolve-control-plane production-read candidate 0.4.0 (attested isolated session)",
+    "worker_sha256": "d2a10dd521f1035e25657b96cf9d9579d10ca31aecc7d7b94310a6d080307584",
+    "commit": "branch claude/resolve-production-read-authority-20260922 (successor candidate to the REJECTED 4ae35e7c; see git)"
   },
   "facade_identity": {
     "commit": "8e068fea2d4df5b9709c387f6444502bd7bc2091",
@@ -35,5 +35,5 @@
   "external_scripting": "Local",
   "project_open_law": "read the project the human already opened; never LoadProject/OpenProject/SetCurrentProject/SetCurrentDatabase",
   "network_libraries": "DEFERRED — not authorized by v1 (EKA, nelja)",
-  "notes": "SCOPE AWAITING MIKKO SELECTION. library is null and projects is empty, status is CANDIDATE with a null approver: this record compiles ONLY with --preview into a non-live deny-all artifact that the worker refuses to serve. It authorizes nothing today. To authorize a canary after an independent review passes, Mikko sets status ACCEPTED with approved_by/approved_at and the path of his acceptance record, then names exactly ONE local Disk library (display name + canonical realpath + the root's device/inode) and at least one project UUID. worker_sha256 pins the exact candidate worker bytes; changing the worker invalidates every policy and every sealed session profile compiled from this record. v1 is structurally vidnux-only and Linux-only: PRESTO, VIDLAP2, Windows, UNC roots and network libraries (EKA, nelja) cannot be expressed in this schema at all. Reads happen only inside an isolated Resolve session launched from a generated profile that registers exactly this one library; Resolve is single-instance on Linux, so such a session is mutually exclusive with the operator's normal Resolve session."
+  "notes": "SCOPE AWAITING MIKKO SELECTION. library is null and projects is empty, status is CANDIDATE with a null approver: this record compiles ONLY with --preview into a non-live deny-all artifact that the worker refuses to serve. It authorizes nothing today. To authorize a canary after an independent review passes, Mikko sets status ACCEPTED with approved_by/approved_at and the path of his acceptance record, then names exactly ONE local Disk library (display name + canonical realpath + the root's device/inode) and at least one project UUID. worker_sha256 pins the exact candidate worker bytes; changing the worker invalidates every policy and every sealed session profile compiled from this record. v1 is structurally vidnux-only and Linux-only: PRESTO, VIDLAP2, Windows, UNC roots and network libraries (EKA, nelja) cannot be expressed in this schema at all. Reads happen only inside an isolated Resolve session CREATED BY tools/launch_isolated_session.py from a generated profile that registers exactly this one library, and the worker additionally requires that launcher\u2019s runtime attestation (fresh session nonce, exact pid and start instant, exact profile tree); Resolve is single-instance on Linux, so such a session is mutually exclusive with the operator's normal Resolve session."
 }

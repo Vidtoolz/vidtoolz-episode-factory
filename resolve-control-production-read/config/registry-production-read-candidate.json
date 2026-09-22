@@ -1,6 +1,6 @@
 {
   "_comment": "CANDIDATE registry for the isolated-session PRODUCTION_READ worker. NOT deployed: the operator registry ~/.config/vidtoolz-resolve-control/registry.json stays qualification-only. Same shape as the operator registry (accepted-facade F-08 guard compatible). v1 has exactly one target: vidnux. PRESTO and VIDLAP2 cannot be production-read targets — the authority schema, the compiler and the worker all refuse any host but vidnux and any platform but Linux, so no remote_command is given for them. The worker paths below are illustrative deployment targets for the CANDIDATE worker and must never overwrite the frozen Phase 1 worker file.",
-  "_chain": "Every PRODUCTION_READ start needs five bound artifacts: --production-authority (the ACCEPTED source record, whose bytes and acceptance semantics the worker re-verifies at every operation), --production-policy + --production-policy-sha256 (the compiled policy FILE and its digest), and --production-session + --production-session-sha256 (the sealed isolated session profile manifest and its digest). Generate the profile with tools/generate_session_profile.py, verify the whole set offline with tools/verify_deployment_binding.py, launch Resolve with the printed profile environment, and only then start the worker.",
+  "_chain": "Every PRODUCTION_READ start needs SEVEN bound artifacts: --production-authority (the ACCEPTED source record, whose bytes and acceptance semantics the worker re-verifies at every operation), --production-policy + --production-policy-sha256 (the compiled policy FILE and its digest), --production-session + --production-session-sha256 (the sealed isolated session profile manifest and its digest) and --production-runtime-attestation + --production-runtime-attestation-sha256 (the record the launcher wrote when it created the session). Order: compile_production_read_policy.py -> generate_session_profile.py -> verify_deployment_binding.py --pre-launch -> quit the normal Resolve -> launch_isolated_session.py (generates the session nonce, launches Resolve, writes the attestation) -> verify_deployment_binding.py (full) -> start the worker.",
   "targets": {
     "vidnux": {
       "transport": "local",
@@ -12,7 +12,10 @@
       "production_policy_sha256": "<POLICY_FILE_SHA256>",
       "production_session": "/home/vidtoolz/.config/vidtoolz-resolve-control/production-read/session-profile.json",
       "production_session_sha256": "<SESSION_PROFILE_FILE_SHA256>",
-      "_local_start": "python3 -B <candidate>/worker/resolve_worker.py --host-id vidnux --secret-file <secret> --state-dir <state> --mode PRODUCTION_READ --production-authority <AUTHORITY.json> --production-policy <policy.json> --production-policy-sha256 <POLICY_FILE_SHA256> --production-session <session-profile.json> --production-session-sha256 <SESSION_PROFILE_FILE_SHA256>"
+      "_local_start": "python3 -B <candidate>/worker/resolve_worker.py --host-id vidnux --secret-file <secret> --state-dir <state> --mode PRODUCTION_READ --production-authority <AUTHORITY.json> --production-policy <policy.json> --production-policy-sha256 <POLICY_FILE_SHA256> --production-session <session-profile.json> --production-session-sha256 <SESSION_PROFILE_FILE_SHA256> --production-runtime-attestation <RUNTIME-ATTESTATION.json> --production-runtime-attestation-sha256 <RUNTIME_ATTESTATION_FILE_SHA256>",
+      "production_runtime_attestation": "/run/user/1000/vrc-production-read/RUNTIME-ATTESTATION.json",
+      "production_runtime_attestation_sha256": "<RUNTIME_ATTESTATION_FILE_SHA256>",
+      "_launcher": "python3 -B <candidate>/tools/launch_isolated_session.py --authority <AUTHORITY.json> --policy <policy.json> --worker <candidate>/worker/resolve_worker.py --session <session-profile.json> --session-sha256 <SESSION_PROFILE_FILE_SHA256> --out <RUNTIME-ATTESTATION.json>   # ephemeral, operator-run, once per session; NOT a service"
     }
   }
 }

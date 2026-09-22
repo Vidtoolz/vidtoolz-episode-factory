@@ -138,12 +138,15 @@ class PriorBypass(unittest.TestCase):
         p = self.fx.profile()
         handle = LeakHandle(self.fx.name, {"name": "Prod Project", "uuid": T.P_A1}, T.TLS, ["Prod Project", "Second"],
                             {"timelineFrameRate": "23.976", "vidtoolzLibraryMarker": B_ONLY})
-        operator_env = {"BMD_RESOLVE_CONFIG_DIR": "/home/vidtoolz/.local/share/DaVinciResolve/configs",
-                        "BMD_RESOLVE_SUPPORT_DIR": "/home/vidtoolz/.local/share/DaVinciResolve",
-                        "BMD_RESOLVE_LOGS_DIR": "/home/vidtoolz/.local/share/DaVinciResolve/logs",
-                        "XDG_CACHE_HOME": "/home/vidtoolz/.cache"}
-        for label, probe in (("pre-existing session", T.FakeProbe(p, start_after=-600, environ=operator_env)),
-                             ("operator profile, started later", T.FakeProbe(p, start_after=30, environ=operator_env))):
+        operator_env = [("BMD_RESOLVE_CONFIG_DIR", "/home/vidtoolz/.local/share/DaVinciResolve/configs"),
+                        ("BMD_RESOLVE_SUPPORT_DIR", "/home/vidtoolz/.local/share/DaVinciResolve"),
+                        ("BMD_RESOLVE_LOGS_DIR", "/home/vidtoolz/.local/share/DaVinciResolve/logs"),
+                        ("XDG_CACHE_HOME", "/home/vidtoolz/.cache"),
+                        (T.rw.NONCE_ENV_KEY, T.NONCE)]
+        pre_existing = T.FakeProbe(p, start_after=-600, env_entries=operator_env)
+        p.attest(probe=pre_existing)                       # even a launcher record forged for the operator's own session
+        later = T.FakeProbe(p, start_after=30, env_entries=operator_env)
+        for label, probe in (("pre-existing session", pre_existing), ("operator profile, started later", later)):
             with self.subTest(label):
                 e = T.Env(self.fx.st(), p, probe=probe, api=handle)
                 try:
@@ -151,15 +154,17 @@ class PriorBypass(unittest.TestCase):
                     self.assertEqual(err.code, "LIBRARY_MISMATCH")
                     a = e.authz()
                     self.assertEqual(a["decision"], "DENIED"); self.assertEqual(a["stage"], "session")
-                    self.assertIn(a["reason"], ("SESSION_PREDATES_PROFILE", "SESSION_PROFILE_MISMATCH"))
+                    self.assertIn(a["reason"], ("SESSION_PREDATES_PROFILE", "SESSION_PROFILE_MISMATCH", "SESSION_RESTARTED"))
                     self.assertEqual(handle.attaches, 0, "the successor must refuse before attaching to Resolve")
                 finally: e.close()
 
     def test_the_predecessor_had_no_session_provenance_and_the_successor_does_not_infer_identity(self):
         old_src = git_show("worker/resolve_worker.py").decode()
-        for absent in ("attest_isolated_session", "SystemProbe", "profile_env", "seal_epoch", "SESSION_PREDATES_PROFILE"):
+        for absent in ("attest_isolated_session", "SystemProbe", "profile_env", "seal_uptime", "SESSION_PREDATES_PROFILE",
+                       "SESSION_ENV_AMBIGUOUS", "environ_entries", "VRC_SESSION_NONCE"):
             self.assertNotIn(absent, old_src, f"{absent} is not part of the rejected predecessor")
-        for present in ("attest_isolated_session", "SystemProbe", "SESSION_PREDATES_PROFILE", "SESSION_HANDLE_UNBOUND"):
+        for present in ("attest_isolated_session", "SystemProbe", "SESSION_PREDATES_PROFILE", "SESSION_HANDLE_UNBOUND",
+                        "SESSION_ENV_AMBIGUOUS", "environ_entries", "SESSION_ENDPOINT_UNATTRIBUTED", "verify_profile_tree"):
             self.assertIn(present, T.SRC, f"{present} must exist in the successor")
         for inferred in ("project_content_anchor", "parse_registration_production", "unique_disk_registration"):
             self.assertIn(inferred, old_src, f"{inferred} was the predecessor's identity primitive")
@@ -176,6 +181,7 @@ class PriorBypass(unittest.TestCase):
             a = e.authz()
             self.assertEqual(a["decision"], "ALLOWED")
             self.assertEqual(a["session"]["pid"], e.probe.resolve_pids[0])
+            self.assertEqual(a["session"]["nonce_id"], T.rw.sha(T.NONCE.encode())[:16])
             self.assertEqual(a["library"]["canonical_root"], os.path.realpath(self.fx.A))
             self.assertNotIn("vidtoolzLibraryMarker", out["result"]["settings"])
         finally: e.close()

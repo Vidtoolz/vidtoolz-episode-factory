@@ -3,19 +3,22 @@
 
 Input: an ACCEPTED production-read authority record + its compiled LIVE policy + the exact candidate worker bytes.
 Output: a sealed, self-contained Resolve profile directory whose Project Library list contains EXACTLY ONE entry — the authorized
-local Disk library — plus a separate manifest binding that directory to the authority, the policy, the worker and the accepted facade.
+local Disk library — plus a separate manifest that binds that directory, its EXACT tree, its physical identity and the pinned Resolve
+executable to the authority, the policy, the worker and the accepted facade.
 
-The generator never reads, opens, mutates or registers a production project, never touches the operator's live Resolve configuration
-(the source configuration directory is read-only and is never written to), never starts Resolve, and never grants write authority.
-It refuses to fabricate: the authorized Disk root must physically exist and match the device/inode pinned by the accepted authority,
-External Scripting must already be Local in the source configuration, and the destination profile directory must be empty or absent.
+The generator never reads, opens, mutates or registers a production project, never writes to the operator's live Resolve configuration,
+never starts Resolve, and never grants write authority. It refuses to fabricate: the profile root must be an ABSOLUTE, NON-SYMLINKED
+path (a symlinked root would let a manifest hide physically inside the profile), the authorized Disk root must physically exist and
+match the device/inode pinned by the accepted authority, External Scripting must already be Local in the source configuration, and the
+destination profile directory must be empty or absent.
 
-Governed content (deterministic, separately digested) is what the worker enforces; runtime provenance (absolute profile root, seal
-instant, per-file digests) is recorded beside it. Regenerating from the same inputs yields a byte-identical governed block.
+The seal describes the profile EXACTLY: every governed file with its digest, every governed directory, the one file Resolve may
+legitimately rewrite (`config/.activedb`, constrained to still name only the authorized library) and a bounded allowlist of runtime
+paths Resolve creates for itself. Anything else appearing under the root after sealing refuses the next operation.
 
 Usage:
   generate_session_profile.py --authority AUTH.json --policy POLICY.json --worker WORKER.py \
-      --source-config DIR --profile-root DIR --out MANIFEST.json [--resolve-binary PATH] [--script-server-port N]
+      --source-config DIR --profile-root ABS_DIR --out MANIFEST.json [--resolve-binary PATH] [--script-server-port N]
 """
 import datetime, hashlib, json, os, shutil, socket, sys, time
 
@@ -23,16 +26,23 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import compile_production_read_policy as C  # single source of truth for the authority schema
 
 PROFILE_SCHEMA = "vidtoolz.resolveProductionReadSessionProfile.v1"
-GENERATOR_VERSION = "1.0.0-isolated-session"
+GENERATOR_VERSION = "2.0.0-attested-session"
 PROFILE_ENV = {"BMD_RESOLVE_CONFIG_DIR": "config", "BMD_RESOLVE_SUPPORT_DIR": "support", "BMD_RESOLVE_LOGS_DIR": "logs", "XDG_CACHE_HOME": "cache"}
 SUBDIRS = ("config", "support", "logs", "cache")
 REGISTRATION_RELPATH = "config/.dblist"
 ACTIVE_RELPATH = "config/.activedb"
-# copied verbatim from the operator configuration: settings only. The library list, the active-database pointer and recent-project
-# history are NEVER copied — they are the whole reason this profile exists.
+CONSTRAINED = (ACTIVE_RELPATH,)            # sealed, but Resolve may rewrite it; content stays bound to the one authorized library
+# Only the settings file that carries External Scripting is copied. Everything else the operator has is deliberately left behind, and
+# everything Resolve creates for itself at runtime is confined to this bounded allowlist. Nothing here is ever authority-bearing.
 COPY_REQUIRED = ("config.dat",)
-COPY_OPTIONAL = ("config.user.xml", "config.user.presets.xml", "keyboard.preset.xml", "mediametadata.preset.xml", "primaryhdr.preset.xml", ".version")
 NEVER_COPY = (".dblist", ".activedb", ".recentprojects", "UI.preset", ".fsbookmarklist", "usersmartfolder.xml", "usersmartfilter.xml")
+VOLATILE_PATTERNS = (
+    "logs/**", "cache/**", "support/**",
+    "config/.recentprojects", "config/.audiobusingmode", "config/.config.data", "config/.version", "config/.update/**",
+    "config/UI.preset", "config/log-conf.xml", "config/OFXPluginCacheV2.xml", "config/*.preset.xml", "config/Fairlight/**",
+    "config/config.dat.bak", "config/config-fairlight.dat", "config/config.user.xml", "config/config.user.presets.xml",
+    "config/usersmartfolder.xml", "config/usersmartfilter.xml", "config/.fsbookmarklist", "config/user.data.xml",
+)
 SCRIPTING_LOCAL = "System.Scripting.Mode = 1"
 DEFAULT_RESOLVE_BINARY = "/opt/resolve/bin/resolve"
 DEFAULT_SCRIPT_SERVER_PORT = 1144
@@ -51,11 +61,17 @@ def sha_bytes(b): return hashlib.sha256(b).hexdigest()
 def sha_file(path):
     h = hashlib.sha256()
     with open(path, "rb") as fh:
-        for chunk in iter(lambda: fh.read(1 << 20), b""): h.update(chunk)
+        for chunk in iter(lambda: fh.read(1 << 22), b""): h.update(chunk)
     return h.hexdigest()
 
 
 def canonical_sha256(o): return sha_bytes(json.dumps(o, sort_keys=True, separators=(",", ":")).encode())
+
+
+def boot_time():
+    for line in open("/proc/stat"):
+        if line.startswith("btime"): return int(line.split()[1])
+    raise GenerateError("/proc/stat carries no btime; the seal instant cannot be anchored to this boot")
 
 
 def physical(path):
@@ -90,13 +106,23 @@ def check_policy(pol_raw, pol, src, src_sha, worker_sha256):
 
 
 def prepare_root(root):
-    req(os.path.isabs(root), "--profile-root must be absolute")
+    """The profile root must be an ABSOLUTE path that is already its own realpath. A relative root is refused outright (never silently
+    made absolute) and a symlinked root is refused, because a link lets a file be lexically 'outside' the root while physically inside."""
+    req(os.path.isabs(root), "--profile-root must be an absolute path")
+    req(root == os.path.normpath(root) and not root.endswith("/"), "--profile-root must be a normalised path without a trailing separator")
+    parent = os.path.dirname(root)
+    req(os.path.isdir(parent), f"--profile-root parent directory does not exist: {parent}")
+    req(os.path.realpath(parent) == parent, "--profile-root has a symlinked parent directory; give a fully canonical path")
     if os.path.exists(root):
+        req(not os.path.islink(root), "--profile-root is a symlink; give the real directory")
         req(os.path.isdir(root), "--profile-root exists and is not a directory")
         req(not os.listdir(root), "--profile-root is not empty; refusing to overwrite an existing profile")
     else:
         os.makedirs(root)
+    req(os.path.realpath(root) == root, "--profile-root is not canonical (symlinked path component)")
     for d in SUBDIRS: os.makedirs(os.path.join(root, d), exist_ok=True)
+    st = os.stat(root)
+    return {"realpath": root, "dev": st.st_dev, "ino": st.st_ino}
 
 
 def copy_settings(source_config, root):
@@ -105,17 +131,14 @@ def copy_settings(source_config, root):
     req(os.path.isdir(src_rp), "--source-config is not a directory")
     req(src_rp != dst_rp and not dst_rp.startswith(src_rp + os.sep), "--profile-root must not live inside --source-config")
     copied = []
-    for name in COPY_REQUIRED + COPY_OPTIONAL:
+    for name in COPY_REQUIRED:
         req(name not in NEVER_COPY, f"internal: {name} is on the never-copy list")
         s = os.path.join(src_rp, name)
-        if not os.path.isfile(s):
-            req(name not in COPY_REQUIRED, f"--source-config: required settings file {name} is missing")
-            continue
+        req(os.path.isfile(s), f"--source-config: required settings file {name} is missing")
         shutil.copyfile(s, os.path.join(root, "config", name))
         copied.append(name)
     cfg = open(os.path.join(root, "config", "config.dat"), "rb").read().decode("utf-8", "replace")
-    lines = [l.strip() for l in cfg.splitlines()]
-    req(SCRIPTING_LOCAL in lines,
+    req(SCRIPTING_LOCAL in [l.strip() for l in cfg.splitlines()],
         "--source-config: External Scripting is not Local (System.Scripting.Mode = 1); the generator never changes this setting — set it in Resolve first")
     return src_rp, copied
 
@@ -129,15 +152,20 @@ def write_registration(root, lib):
 
 
 def seal(root):
-    files = {}
-    for dirpath, dirnames, filenames in os.walk(root):
+    """The EXACT tree: every regular file with its digest and every directory. No symlinks, no special files."""
+    files, dirs = {}, []
+    for dirpath, dirnames, filenames in os.walk(root, followlinks=False):
         dirnames.sort()
+        for name in sorted(dirnames):
+            full = os.path.join(dirpath, name)
+            if os.path.islink(full): raise GenerateError(f"symlinked directory in profile: {full}")
+            dirs.append(os.path.relpath(full, root))
         for name in sorted(filenames):
             full = os.path.join(dirpath, name)
             if os.path.islink(full) or not os.path.isfile(full): raise GenerateError(f"unexpected non-regular file in profile: {full}")
-            files[os.path.relpath(full, root)] = sha_file(full)
+            files[os.path.relpath(full, root)] = {"sha256": sha_file(full)}
     req(files, "sealed profile contains no files")
-    return files
+    return files, sorted(dirs)
 
 
 def build(args):
@@ -154,15 +182,18 @@ def build(args):
     req(st.st_dev == lib["physical_dev"] and st.st_ino == lib["physical_ino"],
         f"library.canonical_root physical identity differs from the accepted authority (dev/ino {st.st_dev}/{st.st_ino} vs {lib['physical_dev']}/{lib['physical_ino']})")
     bin_rp, bin_st = physical(args["resolve_binary"])
-    out = os.path.abspath(args["out"])
-    root = os.path.abspath(args["profile_root"])
-    req(not out.startswith(root + os.sep), "--out manifest must live outside --profile-root (it seals that directory)")
+    req(bin_rp == args["resolve_binary"], f"--resolve-binary is not a canonical path: it resolves to {bin_rp}")
+    root = args["profile_root"]
+    req(os.path.isabs(args["out"]), "--out must be an absolute path")
+    identity = prepare_root(root)
+    out_parent = os.path.realpath(os.path.dirname(args["out"]))
+    req(out_parent != root and not out_parent.startswith(root + os.sep),
+        "--out manifest must live physically outside --profile-root (it seals that directory)")
 
-    prepare_root(root)
     source_config, copied = copy_settings(args["source_config"], root)
     line = write_registration(root, lib)
-    files = seal(root)
-    now = int(time.time())
+    tree, dirs = seal(root)
+    now = int(time.time()); uptime = float(open("/proc/uptime").read().split()[0]); boot = boot_time()
     governed = {
         "session_id": canonical_sha256({"authority": auth_sha, "policy": pol_sha, "worker": worker_sha,
                                         "library": lib, "projects": sorted(pol["projects"]), "profile_type": C.SESSION_PROFILE_TYPE})[:32],
@@ -173,26 +204,28 @@ def build(args):
         "projects": sorted(pol["projects"]), "registration_line": line, "profile_env": dict(PROFILE_ENV),
         "script_server_port": args["script_server_port"],
         "resolve_binary": {"path": args["resolve_binary"], "realpath": bin_rp, "bytes": bin_st.st_size, "sha256": sha_file(bin_rp)},
+        "tree": tree, "dirs": dirs, "volatile_patterns": list(VOLATILE_PATTERNS), "constrained": list(CONSTRAINED),
         "write_authority": "NONE", "persistent_worker_authority": "NONE", "external_scripting": "Local",
         "project_open_law": C.PROJECT_OPEN_LAW,
     }
-    provenance = {"profile_root": root, "registration_relpath": REGISTRATION_RELPATH, "active_relpath": ACTIVE_RELPATH,
-                  "seal_epoch": now, "sealed_at": datetime.datetime.fromtimestamp(now, datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    provenance = {"profile_root": root, "profile_root_dev": identity["dev"], "profile_root_ino": identity["ino"],
+                  "registration_relpath": REGISTRATION_RELPATH, "active_relpath": ACTIVE_RELPATH,
+                  "seal_epoch": now, "seal_uptime": uptime, "seal_boot_time": boot, "sealed_at": datetime.datetime.fromtimestamp(now, datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
                   "generator_version": GENERATOR_VERSION, "generated_on_host": socket.gethostname(),
-                  "source_config": source_config, "copied_settings": copied, "files": files}
+                  "source_config": source_config, "copied_settings": copied}
     manifest = {"schema": PROFILE_SCHEMA, "governed": governed, "governed_sha256": canonical_sha256(governed), "provenance": provenance}
     data = json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode()
-    with open(out, "wb") as fh: fh.write(data)
-    return manifest, out, sha_bytes(data)
+    with open(args["out"], "wb") as fh: fh.write(data)
+    return manifest, args["out"], sha_bytes(data)
 
 
-def launch_recipe(gov, prov):
-    env = " ".join(f'{v}="{os.path.join(prov["profile_root"], rel)}"' for v, rel in sorted(gov["profile_env"].items()))
+def next_steps(gov, prov, out, out_sha):
     return [
-        "# launch the isolated production-read Resolve session (operator action, on vidnux, under the operator's own account):",
-        f'cd /opt/resolve && env {env} DISPLAY="${{DISPLAY:-:1}}" {gov["resolve_binary"]["path"]} &',
-        "# the worker refuses any process that predates the seal, is not launched with exactly these variables,",
-        "# or does not own the scripting endpoint on port %d." % gov["script_server_port"],
+        "# next: create the isolated session with the launcher (it generates a fresh session nonce and writes the runtime attestation):",
+        f'tools/launch_isolated_session.py --session "{out}" --session-sha256 {out_sha} \\',
+        '    --authority AUTHORITY.json --policy policy.json --worker worker/resolve_worker.py --out RUNTIME-ATTESTATION.json',
+        "# the worker then needs BOTH digests: --production-session-sha256 and --production-runtime-attestation-sha256.",
+        "# Resolve is single-instance on Linux: quit the normal Resolve session first.",
     ]
 
 
@@ -214,8 +247,9 @@ def main(argv):
     print(json.dumps({"ok": True, "out": out, "manifest_sha256": file_sha, "governed_sha256": manifest["governed_sha256"],
                       "session_id": gov["session_id"], "profile_root": prov["profile_root"], "seal_epoch": prov["seal_epoch"],
                       "library": gov["library"]["name"], "registrations": 1, "projects": len(gov["projects"]),
-                      "files_sealed": len(prov["files"])}, indent=1))
-    print("\n".join(launch_recipe(gov, prov)))
+                      "sealed_files": len(gov["tree"]), "sealed_dirs": len(gov["dirs"]),
+                      "volatile_patterns": len(gov["volatile_patterns"])}, indent=1))
+    print("\n".join(next_steps(gov, prov, out, file_sha)))
     return 0
 
 

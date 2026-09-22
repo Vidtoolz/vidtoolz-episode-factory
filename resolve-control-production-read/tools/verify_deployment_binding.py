@@ -1,34 +1,42 @@
 #!/usr/bin/env python3
-"""Offline deployment-binding verifier for the isolated production-read chain.
+"""Offline deployment-binding verifier for the attested isolated production-read chain.
 
-Independently re-derives, from bytes on disk only, that one specific facade installation, one worker, one authority record, one
-compiled policy and one sealed session profile are the SAME governed deployment — before anything is launched and without contacting
-Resolve, the network or any project library. Every link is a digest equality, not a name match:
+Independently re-derives, from bytes on disk only, that one facade installation, one worker, one authority record, one compiled policy,
+one sealed session profile and one runtime session attestation are the SAME governed deployment — without contacting Resolve, the
+network or any project library. Every link is a digest equality, not a name match:
 
   facade install  == accepted facade manifest (exact file set + sha256, commit 8e068fea)
-  worker bytes    == authority.worker_identity.worker_sha256 == policy.worker_sha256 == profile.governed.worker_sha256
-  authority bytes == policy.source_record_sha256             == profile.governed.authority_sha256
-  policy body     == policy.policy_sha256                    == profile.governed.policy_sha256
-  profile         == its own governed_sha256, sealed files unchanged, exactly one Disk registration
-  grant           == vidnux / Linux / ISOLATED_DISK_SESSION / WRITE NONE / PERSISTENT NONE / scripting Local
+  worker bytes    == authority.worker_identity.worker_sha256 == policy.worker_sha256 == profile.worker_sha256 == attestation.worker_sha256
+  authority bytes == policy.source_record_sha256             == profile.authority_sha256 == attestation.authority_sha256
+  policy file     == profile.policy_sha256                   == attestation.policy_sha256   (and policy body == its embedded digest)
+  profile file    == attestation.profile_sha256
+  profile on disk == the EXACT sealed tree, no extras, no symlinks, root physical identity intact   (the worker's own law, imported)
+  executable      == the sealed realpath + size + sha256, hashed here
+  attestation     == its own digest, a nonce digest, one scripting port, one profile root, created at/after the seal
+  grant           == vidnux / Linux / ISOLATED_DISK_SESSION / WRITE NONE / PERSISTENT NONE / scripting Local / nine ops
 
 A mixed deployment (accepted facade + some other worker, a policy compiled from a different record, a profile regenerated against a
-different grant, an edited registration) fails here instead of at the production library.
+different grant, an attestation from another session, an edited registration, an added unsealed file) fails here instead of at the
+production library.
 
-Usage: verify_deployment_binding.py --facade-dir DIR --facade-manifest JSON --worker WORKER.py --authority A.json --policy P.json --session S.json [--json]
+Usage: verify_deployment_binding.py --facade-dir DIR --facade-manifest JSON --worker WORKER.py --authority A.json --policy P.json
+                                    --session S.json [--attestation ATT.json | --pre-launch] [--json]
 """
 import hashlib, json, os, sys
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE); sys.path.insert(0, os.path.join(os.path.dirname(HERE), "worker"))
 import compile_production_read_policy as C
+import resolve_worker as rw                       # the profile law is IMPORTED, so the verifier and the worker cannot diverge
 
-PROFILE_SCHEMA = "vidtoolz.resolveProductionReadSessionProfile.v1"
+PROFILE_SCHEMA = rw.PROFILE_SCHEMA
+ATTESTATION_SCHEMA = rw.ATTESTATION_SCHEMA
 
 
 def sha_file(path):
     h = hashlib.sha256()
     with open(path, "rb") as fh:
-        for chunk in iter(lambda: fh.read(1 << 20), b""): h.update(chunk)
+        for chunk in iter(lambda: fh.read(1 << 22), b""): h.update(chunk)
     return h.hexdigest()
 
 
@@ -58,17 +66,13 @@ def verify_facade(ck, facade_dir, manifest):
     missing = sorted(set(want) - set(found)); extra = sorted(set(found) - set(want))
     ck.check("facade.no_missing_files", not missing, missing)
     ck.check("facade.no_extra_files", not extra, extra)
-    bad = []
-    for rel in sorted(set(want) & set(found)):
-        got = sha_file(found[rel])
-        if got != want[rel]["sha256"]: bad.append(rel)
+    bad = [rel for rel in sorted(set(want) & set(found)) if sha_file(found[rel]) != want[rel]["sha256"]]
     ck.check("facade.bytes_match_accepted_commit", not bad, bad)
 
 
-def verify(facade_dir, facade_manifest, worker, authority, policy, session):
+def verify(facade_dir, facade_manifest, worker, authority, policy, session, attestation=None, pre_launch=False):
     ck = Checks()
-    fman = json.load(open(facade_manifest))
-    verify_facade(ck, facade_dir, fman)
+    verify_facade(ck, facade_dir, json.load(open(facade_manifest)))
 
     worker_sha = sha_file(worker)
     auth_raw = open(authority, "rb").read(); auth_sha = hashlib.sha256(auth_raw).hexdigest()
@@ -77,10 +81,9 @@ def verify(facade_dir, facade_manifest, worker, authority, policy, session):
         C.validate_schema(src); ck.check("authority.schema_valid", True, src.get("authority_id"))
     except C.PolicyError as e:
         ck.check("authority.schema_valid", False, e); return ck
-    gaps = C.acceptance_gaps(src, worker_sha)
-    ck.check("authority.accepted_and_pinned", not gaps, "; ".join(gaps))
+    ck.check("authority.accepted_and_pinned", not C.acceptance_gaps(src, worker_sha), "; ".join(C.acceptance_gaps(src, worker_sha)))
 
-    pol_raw = open(policy, "rb").read(); pol = json.loads(pol_raw)
+    pol_raw = open(policy, "rb").read(); pol = json.loads(pol_raw); pol_sha = hashlib.sha256(pol_raw).hexdigest()
     ck.check("policy.schema", pol.get("schema") == C.SCHEMA_OUT, pol.get("schema"))
     ck.check("policy.live", pol.get("live") is True, pol.get("live"))
     ck.check("policy.self_digest", pol.get("policy_sha256") == canonical_sha256({k: v for k, v in pol.items() if k != "policy_sha256"}), pol.get("policy_sha256"))
@@ -97,12 +100,12 @@ def verify(facade_dir, facade_manifest, worker, authority, policy, session):
              (pol.get("library") or {}).get("name"))
     ck.check("policy.projects_match_authority", sorted(pol.get("projects") or []) == sorted(p["project_uuid"] for p in (src.get("projects") or [])), len(pol.get("projects") or []))
 
-    prof_raw = open(session, "rb").read(); prof = json.loads(prof_raw)
-    ck.check("session.schema", prof.get("schema") == PROFILE_SCHEMA, prof.get("schema"))
+    prof_raw = open(session, "rb").read(); prof = json.loads(prof_raw); prof_sha = hashlib.sha256(prof_raw).hexdigest()
     gov, prov = prof.get("governed") or {}, prof.get("provenance") or {}
+    ck.check("session.schema", prof.get("schema") == PROFILE_SCHEMA, prof.get("schema"))
     ck.check("session.governed_digest", prof.get("governed_sha256") == canonical_sha256(gov), prof.get("governed_sha256"))
     ck.check("session.binds_authority_bytes", gov.get("authority_sha256") == auth_sha, gov.get("authority_sha256"))
-    ck.check("session.binds_policy_file", gov.get("policy_sha256") == hashlib.sha256(pol_raw).hexdigest(), gov.get("policy_sha256"))
+    ck.check("session.binds_policy_file", gov.get("policy_sha256") == pol_sha, gov.get("policy_sha256"))
     ck.check("session.binds_worker_bytes", gov.get("worker_sha256") == worker_sha, gov.get("worker_sha256"))
     ck.check("session.binds_accepted_facade", gov.get("facade_commit") == C.ACCEPTED_FACADE_COMMIT, gov.get("facade_commit"))
     ck.check("session.profile_type", gov.get("profile_type") == C.SESSION_PROFILE_TYPE, gov.get("profile_type"))
@@ -112,39 +115,72 @@ def verify(facade_dir, facade_manifest, worker, authority, policy, session):
              isinstance(pol.get("library"), dict) and all(lib.get(k) == pol["library"].get(k) for k in ("kind", "name", "canonical_root", "physical_dev", "physical_ino")), lib.get("name"))
     ck.check("session.projects_match_policy", sorted(gov.get("projects") or []) == sorted(pol.get("projects") or []), len(gov.get("projects") or []))
     ck.check("session.single_disk_registration", gov.get("registration_line") == f'{lib.get("name")}:{lib.get("canonical_root")}::::DISK', gov.get("registration_line"))
-
-    root = prov.get("profile_root") or ""
-    ck.check("session.profile_root_absolute", isinstance(root, str) and root.startswith("/") and not root.startswith("//"), root)
+    tree = gov.get("tree") or {}
+    ck.check("session.exact_tree_sealed", bool(tree) and prov.get("registration_relpath") in tree, len(tree))
+    ck.check("session.constrained_paths_are_sealed", not (set(gov.get("constrained") or []) - set(tree)), gov.get("constrained"))
+    ck.check("session.volatile_allowlist_is_bounded",
+             isinstance(gov.get("volatile_patterns"), list) and all(isinstance(p, str) and p not in ("*", "**", "/**") and not p.startswith("config/**") for p in gov.get("volatile_patterns") or []),
+             len(gov.get("volatile_patterns") or []))
+    ck.check("session.scripting_port", isinstance(gov.get("script_server_port"), int) and 0 < gov["script_server_port"] < 65536, gov.get("script_server_port"))
     ck.check("session.seal_instant", isinstance(prov.get("seal_epoch"), int) and prov["seal_epoch"] > 0, prov.get("seal_epoch"))
-    files = prov.get("files") or {}
-    bad = []
-    for rel, want in sorted(files.items()):
-        p = os.path.join(root, rel)
-        try: got = sha_file(p)
-        except OSError: bad.append(rel + " (unreadable)"); continue
-        if got != want: bad.append(rel)
-    ck.check("session.sealed_files_unchanged", files and not bad, bad or len(files))
-    regfile = os.path.join(root, prov.get("registration_relpath") or "")
+
+    # the profile ON DISK, under the worker's own law
     try:
-        lines = [l for l in open(regfile, encoding="utf-8", errors="replace").read().splitlines() if l.strip()]
-    except OSError as e:
-        lines = None; ck.check("session.registration_readable", False, type(e).__name__)
-    if lines is not None:
-        ck.check("session.registration_readable", True, regfile)
-        ck.check("session.registration_is_exactly_one_authorized_library", lines == [gov.get("registration_line")], lines)
+        rw.verify_profile_root(prov); ck.check("session.profile_root_identity", True, prov.get("profile_root"))
+    except rw.OpError as e:
+        ck.check("session.profile_root_identity", False, (e.detail or {}).get("reason"))
+    try:
+        rw.verify_profile_tree(prov, gov); ck.check("session.profile_tree_is_exact_on_disk", True, f'{len(tree)} sealed files')
+    except (rw.OpError, KeyError, OSError) as e:
+        ck.check("session.profile_tree_is_exact_on_disk", False, (getattr(e, "detail", None) or {}).get("reason") or repr(e)[:120])
+
+    binary = (gov.get("resolve_binary") or {})
+    if os.path.isfile(binary.get("realpath") or ""):
+        st = os.stat(binary["realpath"])
+        ck.check("session.executable_size", st.st_size == binary.get("bytes"), st.st_size)
+        ck.check("session.executable_sha256", sha_file(binary["realpath"]) == binary.get("sha256"), binary.get("sha256"))
+    else:
+        ck.check("session.executable_present", False, binary.get("realpath"))
+
+    if pre_launch:
+        ck.check("attestation.not_required_pre_launch", True, "pre-launch verification: no session has been created yet")
+        return ck
+    if not attestation:
+        ck.check("attestation.provided", False, "no runtime attestation given and --pre-launch not requested"); return ck
+    att_raw = open(attestation, "rb").read(); att = json.loads(att_raw)
+    ck.check("attestation.schema", att.get("schema") == ATTESTATION_SCHEMA, att.get("schema"))
+    ck.check("attestation.self_digest", att.get("attestation_sha256") == canonical_sha256({k: v for k, v in att.items() if k != "attestation_sha256"}), att.get("attestation_sha256"))
+    ck.check("attestation.binds_session_profile", att.get("profile_sha256") == prof_sha and att.get("session_id") == gov.get("session_id"), att.get("profile_sha256"))
+    ck.check("attestation.binds_policy_file", att.get("policy_sha256") == pol_sha, att.get("policy_sha256"))
+    ck.check("attestation.binds_authority_bytes", att.get("authority_sha256") == auth_sha, att.get("authority_sha256"))
+    ck.check("attestation.binds_worker_bytes", att.get("worker_sha256") == worker_sha, att.get("worker_sha256"))
+    ck.check("attestation.binds_accepted_facade", att.get("facade_commit") == C.ACCEPTED_FACADE_COMMIT, att.get("facade_commit"))
+    ck.check("attestation.binds_profile_root",
+             att.get("profile_root") == prov.get("profile_root") and att.get("profile_root_dev") == prov.get("profile_root_dev") and att.get("profile_root_ino") == prov.get("profile_root_ino"),
+             att.get("profile_root"))
+    ck.check("attestation.binds_scripting_port", att.get("script_server_port") == gov.get("script_server_port"), att.get("script_server_port"))
+    ck.check("attestation.binds_executable",
+             (att.get("executable") or {}).get("sha256") == binary.get("sha256") and (att.get("executable") or {}).get("realpath") == binary.get("realpath"),
+             (att.get("executable") or {}).get("realpath"))
+    ck.check("attestation.carries_nonce_digest", isinstance(att.get("nonce_sha256"), str) and len(att.get("nonce_sha256") or "") == 64, bool(att.get("nonce_sha256")))
+    ck.check("attestation.nonce_plaintext_absent", "nonce" not in att and not any(k for k in att if k.endswith("nonce")), sorted(k for k in att if "nonce" in k))
+    ck.check("attestation.created_after_seal", isinstance(att.get("created_epoch"), int) and att["created_epoch"] >= (prov.get("seal_epoch") or 0), att.get("created_epoch"))
+    ck.check("attestation.names_one_process", isinstance(att.get("resolve_pid"), int) and att["resolve_pid"] > 0 and isinstance(att.get("resolve_start_ticks"), int), att.get("resolve_pid"))
     return ck
 
 
 def main(argv):
     keys = {"--facade-dir": "facade_dir", "--facade-manifest": "facade_manifest", "--worker": "worker",
-            "--authority": "authority", "--policy": "policy", "--session": "session"}
-    args = {}; i = 1; as_json = False
+            "--authority": "authority", "--policy": "policy", "--session": "session", "--attestation": "attestation"}
+    args = {}; i = 1; as_json = False; pre = False
     while i < len(argv):
         if argv[i] == "--json": as_json = True; i += 1; continue
+        if argv[i] == "--pre-launch": pre = True; i += 1; continue
         if argv[i] not in keys or i + 1 >= len(argv): print(__doc__); return 2
         args[keys[argv[i]]] = argv[i + 1]; i += 2
-    if set(args) != set(keys.values()): print(__doc__); return 2
-    try: ck = verify(**args)
+    if set(args) - set(keys.values()) or any(k not in args for k in ("facade_dir", "facade_manifest", "worker", "authority", "policy", "session")):
+        print(__doc__); return 2
+    try: ck = verify(pre_launch=pre, **args)
     except (OSError, ValueError, KeyError, TypeError) as e:
         print(json.dumps({"ok": False, "error": "BINDING_UNVERIFIABLE", "message": f"{type(e).__name__}: {str(e)[:300]}"})); return 2
     out = {"ok": ck.ok, "verdict": "DEPLOYMENT BINDING VERIFIED" if ck.ok else "DEPLOYMENT BINDING REFUSED",
