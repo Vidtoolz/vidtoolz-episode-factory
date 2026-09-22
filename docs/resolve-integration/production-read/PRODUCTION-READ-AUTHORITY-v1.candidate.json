@@ -1,0 +1,34 @@
+{
+  "schema": "vidtoolz.resolveProductionReadAuthority.v1",
+  "authority_id": "Resolve Production Read Authority v1",
+  "status": "CANDIDATE_FOR_INDEPENDENT_REVIEW",
+  "approved_by": null,
+  "approved_at": null,
+  "worker_identity": {
+    "component": "resolve-control-plane production-read candidate 0.2.0",
+    "worker_sha256": "c9290b6d62ff7ee6b4ac876d340c690c92d3ce605fee1d2ffc3208027924d466",
+    "commit": "candidate branch claude/resolve-production-read-authority-20260922 (see git)"
+  },
+  "facade_identity": {
+    "commit": "8e068fea2d4df5b9709c387f6444502bd7bc2091",
+    "tree": "ba9d431673d647a155f339738f3fee32760326c2"
+  },
+  "hosts": [],
+  "operations": [
+    "health",
+    "identify",
+    "get_current_project",
+    "get_current_timeline",
+    "list_timelines",
+    "get_project_settings",
+    "get_timeline_settings",
+    "get_media_pool_summary",
+    "get_project_fingerprint"
+  ],
+  "write_authority": "NONE",
+  "persistent_worker_authority": "NONE",
+  "external_scripting": "Local",
+  "project_open_law": "read the project the human already opened; never LoadProject/OpenProject/SetCurrentProject/SetCurrentDatabase",
+  "network_libraries": "DEFERRED \u2014 not authorized by v1 (EKA, nelja)",
+  "notes": "SCOPE AWAITING MIKKO CANARY SELECTION: hosts is intentionally empty (compiles to deny-all). No production library/project may be added here except by Mikko's explicit written selection, followed by independent review. worker_sha256 pins the candidate worker bytes at authoring time; any worker change requires re-pinning and re-review."
+}

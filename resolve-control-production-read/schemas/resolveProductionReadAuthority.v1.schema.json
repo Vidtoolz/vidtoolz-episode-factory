@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "vidtoolz.resolveProductionReadAuthority.v1",
+  "description": "Human-governed source record authorizing the nine read-only Resolve operations against explicitly listed production Disk libraries/projects per host. Compiled deterministically into vidtoolz.resolveProductionReadRuntimePolicy.v1. Deny by default; no wildcards; Disk libraries only in v1 (network libraries deferred).",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema", "authority_id", "status", "approved_by", "worker_identity", "facade_identity", "hosts", "operations", "write_authority", "persistent_worker_authority", "external_scripting", "project_open_law"],
+  "properties": {
+    "schema": {"const": "vidtoolz.resolveProductionReadAuthority.v1"},
+    "authority_id": {"type": "string", "minLength": 1},
+    "status": {"enum": ["CANDIDATE_FOR_INDEPENDENT_REVIEW", "ACCEPTED", "SUPERSEDED", "REJECTED"]},
+    "approved_by": {"type": ["string", "null"]},
+    "approved_at": {"type": ["string", "null"]},
+    "worker_identity": {"type": "object", "additionalProperties": false, "required": ["component", "worker_sha256"], "properties": {"component": {"type": "string"}, "worker_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "commit": {"type": ["string", "null"]}}},
+    "facade_identity": {"type": "object", "additionalProperties": false, "required": ["commit"], "properties": {"commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"}, "tree": {"type": "string"}}},
+    "hosts": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["host_id", "libraries"],
+      "properties": {"host_id": {"enum": ["presto", "vidlap2", "vidnux"]},
+        "libraries": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["kind", "name", "registration_root", "projects"],
+          "properties": {"kind": {"const": "Disk"}, "name": {"type": "string", "minLength": 1, "not": {"const": "*"}},
+            "registration_root": {"type": "string", "minLength": 1, "description": "verbatim root field of the host's Resolve registration line (.dblist on Linux, dblist.conf on Windows)"},
+            "projects": {"type": "array", "minItems": 1, "items": {"type": "object", "additionalProperties": false, "required": ["project_uuid"], "properties": {"project_uuid": {"type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"}, "label": {"type": "string"}}}}}}}}}},
+    "operations": {"type": "array", "items": {"enum": ["health", "identify", "get_current_project", "get_current_timeline", "list_timelines", "get_project_settings", "get_timeline_settings", "get_media_pool_summary", "get_project_fingerprint"]}, "minItems": 9, "maxItems": 9, "uniqueItems": true},
+    "write_authority": {"const": "NONE"},
+    "persistent_worker_authority": {"const": "NONE"},
+    "external_scripting": {"const": "Local"},
+    "project_open_law": {"const": "read the project the human already opened; never LoadProject/OpenProject/SetCurrentProject/SetCurrentDatabase"},
+    "network_libraries": {"const": "DEFERRED — not authorized by v1 (EKA, nelja)"},
+    "notes": {"type": "string"}
+  }
+}

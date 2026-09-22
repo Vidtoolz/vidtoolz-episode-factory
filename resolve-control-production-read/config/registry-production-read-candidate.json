@@ -1,0 +1,11 @@
+{
+  "_comment": "CANDIDATE registry for PRODUCTION_READ workers. NOT deployed; the operator registry ~/.config/vidtoolz-resolve-control/registry.json remains qualification-only. Same shape as the operator registry (facade F-08 guard compatible). Worker paths are illustrative deployment targets for the candidate worker (never overwrite the frozen Phase 1 worker file). POLICY_SHA256 is the sha256 of the compiled policy FILE emitted by tools/compile_production_read_policy.py.",
+  "targets": {
+    "vidnux": {"transport": "local", "port": 47021, "secret_file": "/home/vidtoolz/.config/vidtoolz-resolve-control/secrets/vidnux.key",
+               "read_profile": "PRODUCTION_READ", "production_policy": "/home/vidtoolz/.config/vidtoolz-resolve-control/production-read/policy.json", "production_policy_sha256": "<POLICY_SHA256>"},
+    "presto": {"transport": "ssh", "ssh_alias": "presto", "local_port": 47121, "remote_port": 47021, "secret_file": "/home/vidtoolz/.config/vidtoolz-resolve-control/secrets/presto.key", "liveness_port": 47301,
+               "remote_command": "py -3 C:\\Users\\presto\\.vidtoolz-resolve-worker-pr\\resolve_worker.py --host-id PRESTO --secret-file C:\\Users\\presto\\.vidtoolz-resolve-worker\\worker.key --state-dir C:\\Users\\presto\\.vidtoolz-resolve-worker-pr\\state --exit-with-session --liveness-port 47301 --liveness-interval 60 --liveness-strikes 3 --mode PRODUCTION_READ --production-policy C:\\Users\\presto\\.vidtoolz-resolve-worker-pr\\policy.json --production-policy-sha256 <POLICY_SHA256>"},
+    "vidlap2": {"transport": "ssh", "ssh_alias": "vidlap2", "local_port": 47221, "remote_port": 47021, "secret_file": "/home/vidtoolz/.config/vidtoolz-resolve-control/secrets/vidlap2.key", "liveness_port": 47301,
+               "remote_command": "py -3 C:\\Users\\mjp77\\.vidtoolz-resolve-worker-pr\\resolve_worker.py --host-id VIDLAP2 --secret-file C:\\Users\\mjp77\\.vidtoolz-resolve-worker\\worker.key --state-dir C:\\Users\\mjp77\\.vidtoolz-resolve-worker-pr\\state --exit-with-session --liveness-port 47301 --liveness-interval 60 --liveness-strikes 3 --mode PRODUCTION_READ --production-policy C:\\Users\\mjp77\\.vidtoolz-resolve-worker-pr\\policy.json --production-policy-sha256 <POLICY_SHA256>"}
+  }
+}
