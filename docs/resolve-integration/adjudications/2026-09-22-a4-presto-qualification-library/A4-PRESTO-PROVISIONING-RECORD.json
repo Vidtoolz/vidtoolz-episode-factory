@@ -1,0 +1,101 @@
+{
+  "approval_basis": "Mikko's 2026-09-22 instruction: 'define and perform the governed PRESTO qualification-library provisioning rather than pretending it already exists'. Confirmation on review of this record closes the adjudication.",
+  "approver": "Mikko",
+  "decision": {
+    "fixture": {
+      "media": "none",
+      "naming_rule": "TARGET-CONTRACT.json#naming.project_prefix VIDTOOLZ_RESOLVE_QUAL_V1_",
+      "project_name": "VIDTOOLZ_RESOLVE_QUAL_V1_PRESTO",
+      "settings": {
+        "timelineFrameRate": "25",
+        "timelineResolutionHeight": "1080",
+        "timelineResolutionWidth": "1920"
+      },
+      "timelines": [
+        "VIDTOOLZ_RESOLVE_QUAL_V1_PRESTO__TL_A",
+        "VIDTOOLZ_RESOLVE_QUAL_V1_PRESTO__TL_B"
+      ]
+    },
+    "library": {
+      "instance_note": "new instance; NOT the vidnux instance 7bebd326-\u2026; no bytes copied from the vidnux fixture",
+      "instance_uuid": "687c639f-0092-4279-87d3-e7363417c7cd",
+      "kind": "Disk",
+      "name": "VIDTOOLZ Resolve Qualification v1",
+      "root_path": "C:\\Users\\presto\\.vidtoolz-resolve-qualification\\VIDTOOLZ Resolve Qualification v1"
+    },
+    "procedure": [
+      {
+        "action": "Create empty Disk-library root and tools dir under the presto profile; place PROVISIONING-RECORD.json (sha256 d7c66d6c\u2026) in the root; stage tools/fp_qual_presto.py (cc8f74f4\u2026) and tools/provision_fixture_presto.py (be3c108c\u2026). No Resolve config touched.",
+        "actor": "Claude Code",
+        "status": "DONE 2026-09-22T03:19Z",
+        "step": 1
+      },
+      {
+        "action": "In the running Resolve: Project Manager > (database sidebar) Add Project Library > Disk; Name exactly 'VIDTOOLZ Resolve Qualification v1'; Location = the root above; then select it as the current library. GUI only: dblist.conf/activedb.conf are never authored or copied on this host.",
+        "actor": "Mikko (operator, PRESTO desktop)",
+        "status": "PENDING",
+        "step": 2
+      },
+      {
+        "action": "py -3 %USERPROFILE%\\.vidtoolz-resolve-qualification\\tools\\provision_fixture_presto.py \u2014 refuses unless GetCurrentDatabase() is this Disk library and not a prohibited one; creates the fixture project + two empty timelines, SaveProject, fingerprint BEFORE (vidtoolz.qualFixtureFingerprint.v1). Journal: %USERPROFILE%\\.vidtoolz-resolve-qualification\\provisioning-journal.jsonl.",
+        "actor": "Claude Code (over ssh presto, journaled)",
+        "status": "PENDING step 2",
+        "step": 3
+      },
+      {
+        "action": "Mint OPERATOR_PROVISIONED_PROJECT record (A3 class) for PRESTO with project/timeline UUIDs and fingerprint; update on-disk PROVISIONING-RECORD.json status to PROVISIONED; then run the facade live qualification lane for PRESTO.",
+        "actor": "Claude Code",
+        "status": "PENDING step 3",
+        "step": 4
+      }
+    ],
+    "prohibited": [
+      "EKA",
+      "EKA192.168.50.199",
+      "nelja",
+      "nelja192.168.50.199",
+      "Local Database",
+      "any PostgreSQL/network library",
+      "any .dblist/.activedb/dblist.conf/activedb.conf copy or authoring on PRESTO",
+      "SetCurrentDatabase from any adapter"
+    ],
+    "rollback": "Delete %USERPROFILE%\\.vidtoolz-resolve-qualification and remove the library entry in the Resolve GUI; no other state exists.",
+    "scope": "Extend the qualification-library doctrine to host PRESTO for the purpose of live-qualifying the Hermes read-only facade against PRESTO's own Resolve instance. Nothing else changes: frozen v1.20 bytes untouched; \u00a7A4 vidnux remains the Phase 1 qualification host; WRITE AUTHORITY = NONE; EKA/nelja/Local Database remain prohibited."
+  },
+  "envelope": {
+    "acceptance_commit": "720b2d78313c7749f3516cb39fad1310e13027b2",
+    "authority_version": "1.20.0",
+    "host_name": "PRESTO",
+    "library_name": "VIDTOOLZ Resolve Qualification v1",
+    "library_root": "C:\\Users\\presto\\.vidtoolz-resolve-qualification\\VIDTOOLZ Resolve Qualification v1",
+    "library_uuid": "687c639f-0092-4279-87d3-e7363417c7cd",
+    "manifest_sha256": "29216e6bd6024a8e4e35b0e77ac2aa7fbba8fa34c2a222b9145f93bb81cfedfb"
+  },
+  "finding": {
+    "answer": "NO",
+    "evidence": [
+      "A3 record (10e8e398) envelope host_name = vidnux; isolation_rule 'vidnux only'",
+      "ADJUDICATION-FREEZE-CONTRACT.md \u00a7A4: qualification host = vidnux; 'PRESTO remains the human NLE host'",
+      "doctrine-closure QUALIFICATION-ENVIRONMENT.md: 'no qualification library on Windows hosts'",
+      "PRESTO dblist.conf 2026-09-22: Local Database (DISK), EKA192.168.50.199 (QPSQL), nelja192.168.50.199 (QPSQL) only",
+      "live 2026-09-22T03:17:05Z: frozen worker gen 5 on PRESTO answered resolve_health with probe LIBRARY_MISMATCH (request 52590af7\u2026, caller hermes:3b91c4f5\u2026)"
+    ],
+    "question": "Was VIDTOOLZ Resolve Qualification v1 ever provisioned for PRESTO?"
+  },
+  "frozen_bytes_modified": false,
+  "observations": {
+    "edition": "Studio/free not yet attested; worker identify will report product once the library is active",
+    "presto_resolve_exe_version": "21.1.0.14",
+    "presto_resolve_pid_live": 14492,
+    "presto_resolve_started_utc": "2026-09-22T02:14:40Z",
+    "presto_scripting_mode_config": "LOCAL (config.dat Mode=1)",
+    "worker_bytes_on_presto": "371caf131e5d21cdb8b5f3e505934154b7ee835427d25d9683d51013d345f4b3"
+  },
+  "record_class": "A4 host/library extension for the Hermes read-only facade live qualification (governance record, additive, outside the frozen v1.20 bundle)",
+  "record_id": "5098495cda8e997d6b6197249dac7489ef3b8049522961869809b94f49be3419",
+  "record_type": "PROVISIONING_RECORD",
+  "recorded_at": "2026-09-22",
+  "recorded_by": "Claude Code",
+  "schema": "vidtoolz.resolveHostLibraryExtension.v1",
+  "write_authority": "NONE"
+}
