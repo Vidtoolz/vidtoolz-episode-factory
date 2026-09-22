@@ -1,4 +1,5 @@
-"""Fake DaVinciResolveScript for deterministic tests. Controlled via env VRC_FAKE_STATE (JSON file)."""
+"""Fake DaVinciResolveScript for deterministic tests (candidate copy: adds GetProjectListInCurrentFolder). Controlled via env VRC_FAKE_STATE (JSON file).
+Test-only identity oracle: handed to Worker(...) directly by the tests; never reachable from the production CLI (PRR-F06)."""
 import json, os
 def _state(): return json.load(open(os.environ["VRC_FAKE_STATE"]))
 def _count_attach():
@@ -37,6 +38,7 @@ class _PM:
         if s.st.get("sleep_s"): import time; time.sleep(s.st["sleep_s"])     # synthetic hung Resolve (F-02 tests)
         return _Proj(s.st) if s.st.get("project") else None
     def GetCurrentDatabase(s): return s.st.get("database") or {"DbName": "EKA", "DbType": "PostgreSQL", "IpAddress": "192.168.50.199"}
+    def GetProjectListInCurrentFolder(s): return s.st["project_list"] if "project_list" in s.st else ([s.st["project"]["name"]] if s.st.get("project") else [])
 class _R:
     def __init__(s, st): s.st = st
     def GetProductName(s): return "DaVinci Resolve Studio"

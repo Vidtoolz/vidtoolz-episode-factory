@@ -1,11 +1,37 @@
 #!/usr/bin/env bash
-# Offline test runner for the production-read worker CANDIDATE. No Resolve, no network, no production library.
-# 1) candidate suite (PR-01..PR-20 + identity tests); 2) qualification regression: the FROZEN Phase 1 suites executed
-#    against the CANDIDATE worker bytes in a scratch tree (frozen vrc + frozen tests + candidate worker).
-set -eu; cd "$(dirname "$0")"; export PYTHONDONTWRITEBYTECODE=1
+# Offline runner for the production-read worker CANDIDATE (PRR-F05 repaired: pipefail, direct exit codes, no tee/tail masking).
+# 1) candidate suite; 2) qualification regression: FROZEN Phase 1 suites executed unchanged against the CANDIDATE worker bytes.
+# `./run-tests.sh --self-test` additionally proves the harness: injects one failing test, expects nonzero, restores.
+set -euo pipefail; cd "$(dirname "$0")"; export PYTHONDONTWRITEBYTECODE=1
 : "${VRC_PHASE1_ROOT:=$HOME/resolve-authority-freeze-v1.20/resolve-control}"; export VRC_PHASE1_ROOT
-echo "== candidate suite"; python3 -B -W ignore::ResourceWarning tests/test_production_read.py 2>&1 | tail -3
-echo "== qualification regression (frozen Phase 1 tests vs candidate worker)"
-S=$(mktemp -d); mkdir -p "$S/worker" "$S/tests"; cp worker/resolve_worker.py "$S/worker/"; ln -s "$VRC_PHASE1_ROOT/vrc" "$S/vrc"; cp "$VRC_PHASE1_ROOT"/tests/*.py "$S/tests/"
-for t in test_phase1.py test_repairs.py; do echo "-- $t"; (cd "$S" && python3 -B -W ignore::ResourceWarning "tests/$t" 2>&1 | tail -3); done
-rm -rf "$S"
+fail=0
+run() { # name, cwd, file, min_tests -> records status without masking; an under-collecting suite also fails
+  local name=$1 dir=$2 file=$3 min=${4:-1} log ran; log=$(mktemp)
+  if (cd "$dir" && python3 -B -W ignore::ResourceWarning "$file" >"$log" 2>&1); then
+    ran=$(grep -oE '^Ran [0-9]+' "$log" | head -1 | grep -oE '[0-9]+' || echo 0)
+    if [ "${ran:-0}" -lt "$min" ]; then fail=1; printf '  FAIL  %-28s collected %s tests, expected >= %s (suite truncated or short-circuited)\n' "$name" "${ran:-0}" "$min"
+    else printf '  PASS  %-28s Ran %s tests\n' "$name" "$ran"; fi
+  else fail=1; printf '  FAIL  %-28s %s\n' "$name" "$(grep -oE '^Ran [0-9]+ tests?|FAILED.*|Error.*' "$log" | head -2 | tr '\n' ' ')"; sed -n '1,40p' "$log"; fi
+  rm -f "$log"
+}
+suite() {
+  echo "== candidate suite"; run test_production_read.py . tests/test_production_read.py 22
+  echo "== qualification regression (frozen Phase 1 tests vs candidate worker)"
+  local S; S=$(mktemp -d); mkdir -p "$S/worker" "$S/tests"; cp worker/resolve_worker.py "$S/worker/"; ln -s "$VRC_PHASE1_ROOT/vrc" "$S/vrc"; cp "$VRC_PHASE1_ROOT"/tests/*.py "$S/tests/"
+  run frozen/test_phase1.py "$S" tests/test_phase1.py 22; run frozen/test_repairs.py "$S" tests/test_repairs.py 20; rm -rf "$S"
+}
+if [ "${1:-}" = "--self-test" ]; then
+  echo "== harness self-test: injecting one failing test"; T=$(mktemp -d); cat >"$T/test_injected_failure.py" <<'PY'
+import unittest
+class Injected(unittest.TestCase):
+    def test_must_fail(self): self.fail("injected by run-tests.sh --self-test")
+if __name__ == "__main__": unittest.main()
+PY
+  if run injected "$T" test_injected_failure.py; then :; fi
+  rm -rf "$T"
+  if [ "$fail" -ne 1 ]; then echo "SELF-TEST FAILED: injected failure did not propagate"; exit 3; fi
+  echo "harness propagates failure: OK"; exit 0
+fi
+suite
+if [ "$fail" -ne 0 ]; then echo "RESULT: FAIL"; exit 1; fi
+echo "RESULT: PASS"

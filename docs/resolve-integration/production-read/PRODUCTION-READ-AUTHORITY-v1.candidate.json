@@ -5,9 +5,9 @@
   "approved_by": null,
   "approved_at": null,
   "worker_identity": {
-    "component": "resolve-control-plane production-read candidate 0.2.0",
-    "worker_sha256": "c9290b6d62ff7ee6b4ac876d340c690c92d3ce605fee1d2ffc3208027924d466",
-    "commit": "candidate branch claude/resolve-production-read-authority-20260922 (see git)"
+    "component": "resolve-control-plane production-read candidate 0.2.1",
+    "worker_sha256": "620fae2e8269489ad43684adc0ecb9488e26cc8a9c7f6b81c73bb299462deb7d",
+    "commit": "branch claude/resolve-production-read-authority-20260922 (repair candidate; see git)"
   },
   "facade_identity": {
     "commit": "8e068fea2d4df5b9709c387f6444502bd7bc2091",
@@ -30,5 +30,6 @@
   "external_scripting": "Local",
   "project_open_law": "read the project the human already opened; never LoadProject/OpenProject/SetCurrentProject/SetCurrentDatabase",
   "network_libraries": "DEFERRED \u2014 not authorized by v1 (EKA, nelja)",
-  "notes": "SCOPE AWAITING MIKKO CANARY SELECTION: hosts is intentionally empty (compiles to deny-all). No production library/project may be added here except by Mikko's explicit written selection, followed by independent review. worker_sha256 pins the candidate worker bytes at authoring time; any worker change requires re-pinning and re-review."
+  "notes": "SCOPE AWAITING MIKKO CANARY SELECTION: hosts is intentionally empty and status is CANDIDATE with a null approver, so this record compiles ONLY with --preview into a non-live deny-all artifact that the worker refuses to serve (PRR-F01). To authorize a canary, an independent review must pass, then Mikko sets status ACCEPTED with approved_by/approved_at and the path of his acceptance record, and adds exactly one host -> Disk library (name + verbatim registration_root + canonical physical root, optionally device/inode) -> one project_uuid. worker_sha256 pins the exact candidate worker bytes; changing the worker invalidates every policy compiled from this record.",
+  "acceptance_record": null
 }
