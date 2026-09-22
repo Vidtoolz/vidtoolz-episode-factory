@@ -1,19 +1,24 @@
 {
   "schema": "vidtoolz.resolveProductionReadAuthority.v1",
-  "authority_id": "Resolve Production Read Authority v1",
+  "authority_id": "Resolve Production Read Authority v1 (isolated session)",
   "status": "CANDIDATE_FOR_INDEPENDENT_REVIEW",
   "approved_by": null,
   "approved_at": null,
+  "acceptance_record": null,
   "worker_identity": {
-    "component": "resolve-control-plane production-read candidate 0.2.1",
-    "worker_sha256": "620fae2e8269489ad43684adc0ecb9488e26cc8a9c7f6b81c73bb299462deb7d",
-    "commit": "branch claude/resolve-production-read-authority-20260922 (repair candidate; see git)"
+    "component": "resolve-control-plane production-read candidate 0.3.0 (isolated session)",
+    "worker_sha256": "8caa235d956e13005c5e28208b8283646c6487391285503e76553686fe436527",
+    "commit": "branch claude/resolve-production-read-authority-20260922 (successor candidate to the REJECTED 59a5593d; see git)"
   },
   "facade_identity": {
     "commit": "8e068fea2d4df5b9709c387f6444502bd7bc2091",
     "tree": "ba9d431673d647a155f339738f3fee32760326c2"
   },
-  "hosts": [],
+  "host_id": "vidnux",
+  "platform": "Linux",
+  "session_profile_type": "ISOLATED_DISK_SESSION",
+  "library": null,
+  "projects": [],
   "operations": [
     "health",
     "identify",
@@ -29,7 +34,6 @@
   "persistent_worker_authority": "NONE",
   "external_scripting": "Local",
   "project_open_law": "read the project the human already opened; never LoadProject/OpenProject/SetCurrentProject/SetCurrentDatabase",
-  "network_libraries": "DEFERRED \u2014 not authorized by v1 (EKA, nelja)",
-  "notes": "SCOPE AWAITING MIKKO CANARY SELECTION: hosts is intentionally empty and status is CANDIDATE with a null approver, so this record compiles ONLY with --preview into a non-live deny-all artifact that the worker refuses to serve (PRR-F01). To authorize a canary, an independent review must pass, then Mikko sets status ACCEPTED with approved_by/approved_at and the path of his acceptance record, and adds exactly one host -> Disk library (name + verbatim registration_root + canonical physical root, optionally device/inode) -> one project_uuid. worker_sha256 pins the exact candidate worker bytes; changing the worker invalidates every policy compiled from this record.",
-  "acceptance_record": null
+  "network_libraries": "DEFERRED — not authorized by v1 (EKA, nelja)",
+  "notes": "SCOPE AWAITING MIKKO SELECTION. library is null and projects is empty, status is CANDIDATE with a null approver: this record compiles ONLY with --preview into a non-live deny-all artifact that the worker refuses to serve. It authorizes nothing today. To authorize a canary after an independent review passes, Mikko sets status ACCEPTED with approved_by/approved_at and the path of his acceptance record, then names exactly ONE local Disk library (display name + canonical realpath + the root's device/inode) and at least one project UUID. worker_sha256 pins the exact candidate worker bytes; changing the worker invalidates every policy and every sealed session profile compiled from this record. v1 is structurally vidnux-only and Linux-only: PRESTO, VIDLAP2, Windows, UNC roots and network libraries (EKA, nelja) cannot be expressed in this schema at all. Reads happen only inside an isolated Resolve session launched from a generated profile that registers exactly this one library; Resolve is single-instance on Linux, so such a session is mutually exclusive with the operator's normal Resolve session."
 }

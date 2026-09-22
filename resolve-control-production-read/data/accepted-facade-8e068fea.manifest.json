@@ -1,0 +1,54 @@
+{
+ "acceptance": {
+  "approved_by": "Mikko",
+  "record": "vidtoolz.resolveHumanAcceptance.v1 f8be0e23",
+  "status": "ACCEPTED"
+ },
+ "component": "vidtoolz-resolve-readonly",
+ "facade_commit": "8e068fea2d4df5b9709c387f6444502bd7bc2091",
+ "facade_tree": "ba9d431673d647a155f339738f3fee32760326c2",
+ "files": {
+  "README.md": {
+   "bytes": 2152,
+   "sha256": "179e568a90852c87c0e424bcfcf3ad816b073c27497057eb2a7696b2936c280c"
+  },
+  "__init__.py": {
+   "bytes": 1885,
+   "sha256": "e630c6de063670d8788f82f47bb65089954b2aa83f6ef59e75ca91d2a9d55f87"
+  },
+  "plugin.yaml": {
+   "bytes": 665,
+   "sha256": "b97136ea795f99c5954dbbff98798c947d5744236417da0d5aed973ddefa4359"
+  },
+  "vrcfacade/__init__.py": {
+   "bytes": 1336,
+   "sha256": "d604d93da1d4e0895469a30c345a12bf1198c289510ba417a99ac4be82f52974"
+  },
+  "vrcfacade/authority.py": {
+   "bytes": 16849,
+   "sha256": "4f6d0107664d30321e4a9750028f80803f74fb5ad4537a131e21bd9bdaed1180"
+  },
+  "vrcfacade/facade.py": {
+   "bytes": 20300,
+   "sha256": "a2d022f22fd22efb783f8c8fcb55d549a5c8318a6547ddcf97c353c1c7354ac1"
+  },
+  "vrcfacade/registry_guard.py": {
+   "bytes": 11458,
+   "sha256": "16b9d16b0e83f34fa043e3eea98e4caed4a694f54df68121af833b02d4d68a92"
+  },
+  "vrcfacade/response.py": {
+   "bytes": 10062,
+   "sha256": "c4e6cc5aa5532aea5d240bf2fa399a474b783eb314383341c7f16fc9af4ce8cb"
+  },
+  "vrcfacade/tools.py": {
+   "bytes": 6564,
+   "sha256": "3d5b8b7880701ced292e2e59c152787255ae18b2edc7006eec3e7c3a976dfad6"
+  },
+  "vrcfacade/verified_import.py": {
+   "bytes": 8115,
+   "sha256": "cbcda5158375d9244d0bdb88cd855d7590b6341ce127e427ecea91f22c1ec278"
+  }
+ },
+ "plugin_prefix": "plugins/vidtoolz-resolve-readonly/",
+ "schema": "vidtoolz.resolveFacadeManifest.v1"
+}

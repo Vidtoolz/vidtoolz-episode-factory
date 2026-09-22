@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """VIDTOOLZ Resolve worker — production-read CANDIDATE 0.2.0 (derived from frozen Phase 1 0.1.1, READ ONLY).
 
-Adds an explicit read profile (--mode): QUALIFICATION_READ keeps the frozen 0.1.1 library-gate behaviour unchanged;
-PRODUCTION_READ authorizes reads ONLY when the CURRENT library identity AND the CURRENT project UUID are listed in a
-compiled, digest-pinned production-read policy (deny by default, no wildcards, Disk libraries only in v1, re-checked at
-every operation). Never opens, loads or switches a project or library. WRITE AUTHORITY = NONE.
+Adds an explicit read profile (--mode). QUALIFICATION_READ keeps the frozen 0.1.1 library-gate behaviour unchanged.
+PRODUCTION_READ (v1: vidnux/Linux only) authorizes reads ONLY inside an ISOLATED_DISK_SESSION: an ACCEPTED human authority is
+compiled into a digest-pinned policy, a deterministic profile registering EXACTLY ONE authorized Disk library is sealed, and the
+worker reads only a Resolve process that started AFTER that seal, under that exact profile, owned by this user, alone on the host,
+and owning the scripting endpoint — then only the allowlisted project UUID. Registration text and project UUIDs can be forged or
+cloned, so they never establish identity on their own; session provenance does. Never opens, loads or switches a project or
+library. WRITE AUTHORITY = NONE. PERSISTENT WORKER AUTHORITY = NONE.
 
 Phase 1, READ ONLY, host-local Resolve attachment only.
 
@@ -18,15 +21,22 @@ stdlib only (Python >= 3.10).
 saturation state + health outside the Resolve path (F-02), controller-path liveness
 probe (F-03), security/protocol failure journaling with lock+fsync (F-04), and the
 qualification-library gate (--require-library) demanded by v1.18 §A4."""
-import argparse, hashlib, hmac, json, os, platform, re, socket, subprocess, sys, threading, time, uuid
+import argparse, datetime, hashlib, hmac, json, os, platform, re, socket, subprocess, sys, threading, time, uuid
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutTimeout
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-WORKER_VERSION = "0.2.1-production-read-candidate"
+WORKER_VERSION = "0.3.0-production-read-isolated-session-candidate"
 DERIVED_FROM = {"component": "resolve-control-plane phase1 0.1.1", "commit": "77c26103dfe88c448267a9c1efe7f34a20a39375", "worker_sha256": "371caf131e5d21cdb8b5f3e505934154b7ee835427d25d9683d51013d345f4b3"}
 READ_PROFILES = ("QUALIFICATION_READ", "PRODUCTION_READ")
 POLICY_SCHEMA = "vidtoolz.resolveProductionReadRuntimePolicy.v1"
 AUTHORITY_SCHEMA = "vidtoolz.resolveProductionReadAuthority.v1"
+PROFILE_SCHEMA = "vidtoolz.resolveProductionReadSessionProfile.v1"
+AUTHORITY_STATUSES = ("CANDIDATE_FOR_INDEPENDENT_REVIEW", "ACCEPTED", "SUPERSEDED", "REJECTED")
+SESSION_PROFILE_TYPE = "ISOLATED_DISK_SESSION"
+PRODUCTION_HOSTS = ("vidnux",)          # v1 is structurally vidnux-only; PRESTO/VIDLAP2/Windows production reads are not authorizable
+PRODUCTION_PLATFORM = "Linux"
+PROJECT_OPEN_LAW = "read the project the human already opened; never LoadProject/OpenProject/SetCurrentProject/SetCurrentDatabase"
+NETWORK_LIBRARIES_TEXT = "DEFERRED — not authorized by v1 (EKA, nelja)"
 ACCEPTED_FACADE_COMMIT = "8e068fea2d4df5b9709c387f6444502bd7bc2091"   # the only facade this worker candidate is authored for; a policy naming another facade is unusable here
 APPROVERS = ("Mikko",)                                                  # repository convention: human acceptance is recorded by Mikko (see adjudications/*ACCEPTANCE.json decided_by)
 NETWORK_TYPES = ("QPSQL", "POSTGRESQL", "POSTGRES", "NETWORK")
@@ -95,156 +105,281 @@ def dblist_root_for(name):
 # ^ FROZEN Phase 1 bytes, untouched: this is the QUALIFICATION_READ gate's parser. PRODUCTION_READ never calls it and uses the
 # strict per-platform parser below instead (PRR-F03): a production repair must not change qualification semantics.
 
-# ---------------------------------------------------------------- production-read authority + policy (accepted, pinned, deny by default)
+# ---------------------------------------------------------------- production-read: accepted authority, policy, sealed session profile
+# v1 trust model (isolated session provenance). Registration metadata can be rewritten and a project UUID can be cloned, so neither can
+# prove which PHYSICAL library an arbitrary pre-existing Resolve handle represents. This candidate therefore never authorizes an arbitrary
+# session: an accepted authority is compiled into a policy, a deterministic profile registering EXACTLY ONE authorized Disk library is
+# sealed, and only a Resolve process that was started AFTER that seal, under that exact profile, owned by this user, alone on the host and
+# owning the scripting endpoint, may be read. Provenance replaces inference.
 def canonical_sha256(obj): return sha(json.dumps(obj, sort_keys=True, separators=(",", ":")).encode())
 
 def _refuse(reason, message, **detail): raise OpError("LIBRARY_MISMATCH", message + "; fail closed", dict(detail, reason=reason))
 
-def verify_accepted_authority(raw):
-    """Semantic acceptance check the WORKER performs itself on the source record bytes (PRR-F01/F02). Not a schema check
-    (the compiler does that): this is the minimum set of facts that make a record a human-accepted grant. Returns the
-    parsed record. Any defect refuses."""
-    try: rec = json.loads(raw)
-    except ValueError: _refuse("AUTHORITY_INVALID", "authority record is not valid JSON")
-    if not isinstance(rec, dict) or rec.get("schema") != AUTHORITY_SCHEMA: _refuse("AUTHORITY_INVALID", "authority record has the wrong schema")
-    if rec.get("status") != "ACCEPTED": _refuse("AUTHORITY_NOT_ACCEPTED", f"authority status is {rec.get('status')!r}, not ACCEPTED (a candidate never authorizes)")
-    if rec.get("approved_by") not in APPROVERS: _refuse("AUTHORITY_NOT_ACCEPTED", "authority record has no valid human approver")
-    if not isinstance(rec.get("approved_at"), str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}(T[0-9:.+Z-]+)?", rec["approved_at"]): _refuse("AUTHORITY_NOT_ACCEPTED", "authority record has no approval date")
-    if not isinstance(rec.get("acceptance_record"), str) or not rec["acceptance_record"].strip(): _refuse("AUTHORITY_NOT_ACCEPTED", "authority record names no acceptance record")
-    if rec.get("write_authority") != "NONE" or rec.get("persistent_worker_authority") != "NONE" or rec.get("external_scripting") != "Local": _refuse("AUTHORITY_INVALID", "authority record does not retain NONE/NONE/Local boundaries")
-    if sorted(rec.get("operations") or []) != sorted(READ_ONLY_OPS): _refuse("AUTHORITY_INVALID", "authority operations are not exactly the nine read operations")
-    if not isinstance(rec.get("hosts"), list) or not rec["hosts"]: _refuse("AUTHORITY_NOT_ACCEPTED", "accepted authority grants no host (empty is never a grant)")
+def _iso_date(v):
+    """A real calendar date, not merely a date-shaped string (RRR-P302: 2026-99-99 was accepted before)."""
+    if not isinstance(v, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", v[:10] if len(v) >= 10 else ""): return False
+    try: datetime.date.fromisoformat(v[:10]); return True
+    except ValueError: return False
+
+def _lit(v):
+    return isinstance(v, str) and bool(v.strip()) and v == v.strip() and v != "*" and not any(c in v for c in "?*[]\"'\n\r\t")
+
+def _abs_local_dir(v):
+    return _lit(v) and v.startswith("/") and not v.startswith("//") and not any(s in ("", ".", "..") for s in v.split("/")[1:])
+
+def validate_authority_record(rec):
+    """Closed-schema validation of the SOURCE record, performed by the worker itself (RRR-F02: the worker previously trusted the
+    compiler's validation and could consume a hand-made source/policy pair). Mirrors schemas/resolveProductionReadAuthority.v1."""
+    def obj(o, allowed, required, where):
+        if not isinstance(o, dict): _refuse("AUTHORITY_INVALID", f"{where} is not an object")
+        if set(o) - set(allowed): _refuse("AUTHORITY_INVALID", f"{where} has unknown field(s) {sorted(set(o) - set(allowed))}")
+        if set(required) - set(o): _refuse("AUTHORITY_INVALID", f"{where} is missing {sorted(set(required) - set(o))}")
+    obj(rec, ("schema", "authority_id", "status", "approved_by", "approved_at", "acceptance_record", "worker_identity", "facade_identity",
+              "host_id", "platform", "session_profile_type", "library", "projects", "operations", "write_authority",
+              "persistent_worker_authority", "external_scripting", "project_open_law", "network_libraries", "notes"),
+        ("schema", "authority_id", "status", "approved_by", "worker_identity", "facade_identity", "host_id", "platform",
+         "session_profile_type", "library", "projects", "operations", "write_authority", "persistent_worker_authority",
+         "external_scripting", "project_open_law"), "authority record")
+    if rec["schema"] != AUTHORITY_SCHEMA: _refuse("AUTHORITY_INVALID", "authority record has the wrong schema")
+    if not _lit(rec["authority_id"]): _refuse("AUTHORITY_INVALID", "authority_id must be a literal string")
+    if rec["status"] not in AUTHORITY_STATUSES: _refuse("AUTHORITY_INVALID", f"unknown status {rec['status']!r}")
+    if rec["host_id"] not in PRODUCTION_HOSTS: _refuse("AUTHORITY_INVALID", f"host {rec['host_id']!r} is not a supported production-read host (v1: vidnux only)")
+    if rec["platform"] != PRODUCTION_PLATFORM: _refuse("AUTHORITY_INVALID", "v1 supports Linux only; Windows production reads are structurally unsupported")
+    if rec["session_profile_type"] != SESSION_PROFILE_TYPE: _refuse("AUTHORITY_INVALID", "only the isolated Disk session profile type is supported")
+    w = rec["worker_identity"]; obj(w, ("component", "worker_sha256", "commit"), ("component", "worker_sha256"), "worker_identity")
+    if not (isinstance(w["worker_sha256"], str) and re.fullmatch(r"[0-9a-f]{64}", w["worker_sha256"])): _refuse("AUTHORITY_INVALID", "worker_identity.worker_sha256 must be a sha256")
+    f = rec["facade_identity"]; obj(f, ("commit", "tree"), ("commit",), "facade_identity")
+    if not (isinstance(f["commit"], str) and re.fullmatch(r"[0-9a-f]{40}", f["commit"])): _refuse("AUTHORITY_INVALID", "facade_identity.commit must be a 40-hex commit")
+    lib = rec["library"]; obj(lib, ("kind", "name", "canonical_root", "physical_dev", "physical_ino"), ("kind", "name", "canonical_root", "physical_dev", "physical_ino"), "library")
+    if lib["kind"] != "Disk": _refuse("AUTHORITY_INVALID", "v1 authorizes local Disk libraries only (EKA/nelja/PostgreSQL/QPSQL are unsupported)")
+    if not _lit(lib["name"]) or lib["name"] in PROHIBITED_LIBRARIES: _refuse("AUTHORITY_INVALID", "library name is not a permitted literal name")
+    if not _abs_local_dir(lib["canonical_root"]): _refuse("AUTHORITY_INVALID", "library canonical_root must be an absolute local path (UNC/network roots refused)")
+    for k in ("physical_dev", "physical_ino"):
+        if not isinstance(lib[k], int) or isinstance(lib[k], bool): _refuse("AUTHORITY_INVALID", f"library.{k} must be an integer")
+    if not isinstance(rec["projects"], list) or not rec["projects"]: _refuse("AUTHORITY_INVALID", "projects must be a non-empty list (empty never means all)")
+    seen = set()
+    for p in rec["projects"]:
+        obj(p, ("project_uuid", "label"), ("project_uuid",), "project")
+        if not (isinstance(p["project_uuid"], str) and UUID_RE.match(p["project_uuid"])): _refuse("AUTHORITY_INVALID", "project_uuid must be a lowercase RFC 4122 UUID")
+        if p["project_uuid"] in seen: _refuse("AUTHORITY_INVALID", "duplicate project_uuid")
+        seen.add(p["project_uuid"])
+    if sorted(rec["operations"]) != sorted(READ_ONLY_OPS): _refuse("AUTHORITY_INVALID", "operations must be exactly the nine read operations")
+    if rec["write_authority"] != "NONE" or rec["persistent_worker_authority"] != "NONE" or rec["external_scripting"] != "Local":
+        _refuse("AUTHORITY_INVALID", "authority does not retain NONE/NONE/Local boundaries")
+    if rec["project_open_law"] != PROJECT_OPEN_LAW: _refuse("AUTHORITY_INVALID", "project_open_law text is not the governed law")
+    if "network_libraries" in rec and rec["network_libraries"] != NETWORK_LIBRARIES_TEXT: _refuse("AUTHORITY_INVALID", "network_libraries text is not the governed v1 text")
     return rec
 
-def _source_grants(rec, host_id):
-    """{(name, registration_root): set(project_uuid)} the SOURCE record grants to this host."""
-    out = {}
-    for h in rec["hosts"]:
-        if str(h.get("host_id", "")).lower() != host_id.lower(): continue
-        for lib in h.get("libraries") or []:
-            out[(lib.get("name"), lib.get("registration_root"))] = {p.get("project_uuid") if isinstance(p, dict) else p for p in (lib.get("projects") or [])}
-    return out
+def verify_accepted_authority(raw):
+    """Acceptance is semantic, never mere existence (PRR-F01). Returns the validated, ACCEPTED record."""
+    try: rec = json.loads(raw)
+    except ValueError: _refuse("AUTHORITY_INVALID", "authority record is not valid JSON")
+    validate_authority_record(rec)
+    if rec["status"] != "ACCEPTED": _refuse("AUTHORITY_NOT_ACCEPTED", f"authority status is {rec['status']!r}, not ACCEPTED (a candidate never authorizes)")
+    if rec["approved_by"] not in APPROVERS: _refuse("AUTHORITY_NOT_ACCEPTED", "authority record has no valid human approver")
+    if not _iso_date(rec.get("approved_at")): _refuse("AUTHORITY_NOT_ACCEPTED", "authority record has no real calendar approval date")
+    if not (isinstance(rec.get("acceptance_record"), str) and rec["acceptance_record"].strip()): _refuse("AUTHORITY_NOT_ACCEPTED", "authority record names no acceptance record")
+    return rec
 
 def load_production_policy(path, expected_sha256, authority_path, host_id, own_sha256):
-    """Load and verify the compiled runtime policy against: the pinned file digest, its embedded body digest, its schema, the
-    ACCEPTED source authority bytes (digest AND semantics), this worker's own bytes, the accepted facade identity, the host,
-    and the grant shape. Fails closed on any defect. Re-run at EVERY operation (nothing cached)."""
+    """Policy + accepted authority, re-read and re-verified at EVERY operation. Nothing self-declared is trusted: the source record's
+    BYTES are hashed here, its semantics revalidated, and the policy's grant must be a subset of the accepted grant on the FULL physical
+    tuple (kind, name, canonical_root, dev, ino, projects) — RRR-F02."""
     try: raw = open(path, "rb").read()
     except OSError as e: _refuse("PRODUCTION_POLICY_MISSING", "production-read policy unavailable", cause=type(e).__name__)
-    if sha(raw) != expected_sha256: _refuse("PRODUCTION_POLICY_PIN_MISMATCH", "production-read policy digest does not match the pinned digest", expected=expected_sha256, actual=sha(raw))
+    if sha(raw) != expected_sha256: _refuse("PRODUCTION_POLICY_PIN_MISMATCH", "policy digest does not match the pinned digest", expected=expected_sha256, actual=sha(raw))
     try: pol = json.loads(raw)
-    except ValueError: _refuse("PRODUCTION_POLICY_INVALID", "production-read policy is not valid JSON")
-    if not isinstance(pol, dict) or pol.get("schema") != POLICY_SCHEMA: _refuse("PRODUCTION_POLICY_INVALID", "production-read policy has the wrong schema")
+    except ValueError: _refuse("PRODUCTION_POLICY_INVALID", "policy is not valid JSON")
+    if not isinstance(pol, dict) or pol.get("schema") != POLICY_SCHEMA: _refuse("PRODUCTION_POLICY_INVALID", "policy has the wrong schema")
     body = {k: v for k, v in pol.items() if k != "policy_sha256"}
-    if pol.get("policy_sha256") != canonical_sha256(body): _refuse("PRODUCTION_POLICY_INVALID", "production-read policy body does not match its embedded digest")
+    if pol.get("policy_sha256") != canonical_sha256(body): _refuse("PRODUCTION_POLICY_INVALID", "policy body does not match its embedded digest")
     if pol.get("live") is not True or pol.get("authority_status") != "ACCEPTED": _refuse("AUTHORITY_NOT_ACCEPTED", "policy is a non-live preview or was not compiled from an ACCEPTED authority")
-    # -- source authority: bytes AND semantics, verified here, not trusted from the policy
     try: araw = open(authority_path, "rb").read()
     except OSError as e: _refuse("AUTHORITY_MISSING", "accepted authority record unavailable", cause=type(e).__name__)
-    if sha(araw) != pol.get("source_record_sha256"): _refuse("AUTHORITY_SOURCE_MISMATCH", "authority record bytes do not match the digest the policy was compiled from", expected=pol.get("source_record_sha256"), actual=sha(araw))
+    if sha(araw) != pol.get("source_record_sha256"): _refuse("AUTHORITY_SOURCE_MISMATCH", "authority bytes do not match the digest the policy was compiled from", expected=pol.get("source_record_sha256"), actual=sha(araw))
     rec = verify_accepted_authority(araw)
-    # -- identity pins: this worker's own bytes and the accepted facade
-    if pol.get("worker_sha256") != own_sha256 or (rec.get("worker_identity") or {}).get("worker_sha256") != own_sha256: _refuse("WORKER_IDENTITY_MISMATCH", "policy/authority are not for this worker's bytes", expected=own_sha256, policy=pol.get("worker_sha256"))
-    if pol.get("facade_commit") != ACCEPTED_FACADE_COMMIT or (rec.get("facade_identity") or {}).get("commit") != ACCEPTED_FACADE_COMMIT: _refuse("FACADE_IDENTITY_MISMATCH", "policy/authority name a facade this worker was not authored for", expected=ACCEPTED_FACADE_COMMIT, policy=pol.get("facade_commit"))
+    if pol.get("worker_sha256") != own_sha256 or rec["worker_identity"]["worker_sha256"] != own_sha256:
+        _refuse("WORKER_IDENTITY_MISMATCH", "policy/authority are not for this worker's bytes", expected=own_sha256, policy=pol.get("worker_sha256"))
+    if pol.get("facade_commit") != ACCEPTED_FACADE_COMMIT or rec["facade_identity"]["commit"] != ACCEPTED_FACADE_COMMIT:
+        _refuse("FACADE_IDENTITY_MISMATCH", "policy/authority name a facade this worker was not authored for", expected=ACCEPTED_FACADE_COMMIT, policy=pol.get("facade_commit"))
     if sorted(pol.get("operations") or []) != sorted(READ_ONLY_OPS): _refuse("PRODUCTION_POLICY_INVALID", "policy operations are not exactly the nine read operations")
-    hosts = pol.get("hosts")
-    if not isinstance(hosts, dict) or not hosts: _refuse("PRODUCTION_POLICY_INVALID", "policy grants no host")
-    host = next((h for k, h in hosts.items() if k.lower() == host_id.lower()), None)
-    if not host: _refuse("HOST_NOT_AUTHORIZED", "policy grants nothing to this host", host=host_id)
-    libs = host.get("libraries")
-    if not isinstance(libs, list) or not libs: _refuse("PRODUCTION_POLICY_INVALID", "policy host entry grants no library")
-    src = _source_grants(rec, host_id); seen = set()
-    for lib in libs:
-        if not isinstance(lib, dict) or lib.get("kind") != "Disk": _refuse("PRODUCTION_POLICY_INVALID", "policy library is not a Disk library (v1 supports Disk only)")
-        name, root, canon = lib.get("name"), lib.get("registration_root"), lib.get("canonical_root")
-        for v in (name, root, canon):
-            if not isinstance(v, str) or not v.strip() or v.strip() == "*" or any(ch in v for ch in "?[]"): _refuse("PRODUCTION_POLICY_WILDCARD", "policy library identity must be a literal non-empty string")
-        if (name, root) in seen: _refuse("PRODUCTION_POLICY_INVALID", "duplicate library entry in policy"); seen.add((name, root))
-        projs = lib.get("projects")
-        if not isinstance(projs, list) or not projs: _refuse("PRODUCTION_POLICY_WILDCARD", "policy library lists no project UUIDs (empty never means all)", library=name)
-        for u in projs:
-            if not isinstance(u, str) or not UUID_RE.match(u): _refuse("PRODUCTION_POLICY_WILDCARD", "policy project entry is not an RFC 4122 UUID", library=name, entry=str(u)[:60])
-        if set(projs) - src.get((name, root), set()): _refuse("AUTHORITY_SOURCE_MISMATCH", "policy grants a project the accepted authority does not", library=name)
+    if pol.get("host_id") != host_id or host_id not in PRODUCTION_HOSTS: _refuse("HOST_NOT_AUTHORIZED", "policy does not grant this host", host=host_id, policy_host=pol.get("host_id"))
+    if pol.get("host_id") != rec["host_id"]: _refuse("AUTHORITY_SOURCE_MISMATCH", "policy host differs from the accepted authority host")
+    if pol.get("platform") != PRODUCTION_PLATFORM or pol.get("session_profile_type") != SESSION_PROFILE_TYPE: _refuse("PRODUCTION_POLICY_INVALID", "policy platform/session type is not the supported isolated Linux Disk session")
+    plib, alib = pol.get("library"), rec["library"]
+    if not isinstance(plib, dict): _refuse("PRODUCTION_POLICY_INVALID", "policy carries no library grant")
+    for k in ("kind", "name", "canonical_root", "physical_dev", "physical_ino"):
+        if plib.get(k) != alib[k]: _refuse("AUTHORITY_SOURCE_MISMATCH", f"policy library.{k} differs from the accepted authority", field=k)
+    if plib["kind"] != "Disk" or not _abs_local_dir(plib["canonical_root"]) or plib["name"] in PROHIBITED_LIBRARIES:
+        _refuse("PRODUCTION_POLICY_INVALID", "policy library is not a permitted local Disk library")
+    pprojs, aprojs = pol.get("projects"), [p["project_uuid"] for p in rec["projects"]]
+    if not isinstance(pprojs, list) or not pprojs: _refuse("PRODUCTION_POLICY_WILDCARD", "policy lists no project UUIDs (empty never means all)")
+    for u in pprojs:
+        if not (isinstance(u, str) and UUID_RE.match(u)): _refuse("PRODUCTION_POLICY_WILDCARD", "policy project entry is not an RFC 4122 UUID", entry=str(u)[:60])
+    if set(pprojs) - set(aprojs): _refuse("AUTHORITY_SOURCE_MISMATCH", "policy grants a project the accepted authority does not")
     return pol, rec
 
-# ---------------------------------------------------------------- production-read library identity (dedicated parser; frozen parser untouched)
-def registration_file():
-    return os.path.join(resolve_config_dir(), "dblist.conf" if platform.system() == "Windows" else ".dblist")
+# ---------------------------------------------------------------- sealed isolated session profile
+def load_session_profile(path, expected_sha256, policy, policy_sha256, authority_sha256, own_sha256, host_id):
+    """The sealed profile is the link between the accepted policy and a concrete Resolve session: it names the profile directory the
+    session must be launched with, the exact one-library registration, the physical root identity and the seal instant the process must
+    postdate. Governed content is deterministic and separately digested; runtime provenance (seal instant, absolute root) is recorded
+    beside it, so regeneration from the same authority is reproducible."""
+    try: raw = open(path, "rb").read()
+    except OSError as e: _refuse("SESSION_PROFILE_MISSING", "session profile manifest unavailable", cause=type(e).__name__)
+    if sha(raw) != expected_sha256: _refuse("SESSION_PROFILE_PIN_MISMATCH", "session profile digest does not match the pinned digest", expected=expected_sha256, actual=sha(raw))
+    try: prof = json.loads(raw)
+    except ValueError: _refuse("SESSION_PROFILE_INVALID", "session profile is not valid JSON")
+    if not isinstance(prof, dict) or prof.get("schema") != PROFILE_SCHEMA: _refuse("SESSION_PROFILE_INVALID", "session profile has the wrong schema")
+    gov, prov = prof.get("governed"), prof.get("provenance")
+    if not isinstance(gov, dict) or not isinstance(prov, dict): _refuse("SESSION_PROFILE_INVALID", "session profile lacks governed/provenance blocks")
+    if prof.get("governed_sha256") != canonical_sha256(gov): _refuse("SESSION_PROFILE_INVALID", "governed block does not match its digest")
+    if gov.get("profile_type") != SESSION_PROFILE_TYPE: _refuse("SESSION_PROFILE_INVALID", "unsupported profile type")
+    if gov.get("host_id") != host_id or gov.get("platform") != PRODUCTION_PLATFORM: _refuse("HOST_NOT_AUTHORIZED", "session profile is not for this host/platform")
+    if gov.get("authority_sha256") != authority_sha256: _refuse("SESSION_PROFILE_MISMATCH", "session profile was generated from a different authority record")
+    if gov.get("policy_sha256") != policy_sha256: _refuse("SESSION_PROFILE_MISMATCH", "session profile was generated from a different policy")
+    if gov.get("worker_sha256") != own_sha256: _refuse("WORKER_IDENTITY_MISMATCH", "session profile is not for this worker's bytes")
+    if gov.get("facade_commit") != ACCEPTED_FACADE_COMMIT: _refuse("FACADE_IDENTITY_MISMATCH", "session profile names another facade")
+    glib = gov.get("library")
+    if not isinstance(glib, dict) or any(glib.get(k) != policy["library"][k] for k in ("kind", "name", "canonical_root", "physical_dev", "physical_ino")):
+        _refuse("SESSION_PROFILE_MISMATCH", "session profile library differs from the policy grant")
+    if sorted(gov.get("projects") or []) != sorted(policy["projects"]): _refuse("SESSION_PROFILE_MISMATCH", "session profile projects differ from the policy grant")
+    if gov.get("registration_line") != f'{glib["name"]}:{glib["canonical_root"]}::::DISK': _refuse("SESSION_PROFILE_INVALID", "registration line is not the single authorized Disk registration")
+    root = prov.get("profile_root")
+    if not _abs_local_dir(root or ""): _refuse("SESSION_PROFILE_INVALID", "profile_root must be an absolute local directory")
+    if not isinstance(prov.get("seal_epoch"), int) or prov["seal_epoch"] <= 0: _refuse("SESSION_PROFILE_INVALID", "profile has no seal instant")
+    files = prov.get("files")
+    if not isinstance(files, dict) or not files: _refuse("SESSION_PROFILE_INVALID", "profile records no file digests")
+    return prof, gov, prov
 
-def parse_registration_production(text, plat=None):
-    r"""STRICT registration grammar (PRR-F03), from the sealed vidnux/PRESTO/VIDLAP2 files. Every non-blank line must be one of:
-      Linux   Disk:    name:/abs/path::::DISK                 -> 6 colon fields [name, path, "", "", "", "DISK"]
-      Windows Disk:    name:X\path:*:::DISK                   -> 6 fields [name, X\path, "*", "", "", "DISK"]  (drive colon absent in the serialized field)
-      network:         name:host:postgres:DaVinci:db:QPSQL   -> 6 fields, type QPSQL (recorded as kind NETWORK, never authorizable)
-    Anything else (truncated record, unknown type suffix such as NOTDISK, wrong field count, relative/UNC/quoted root, empty name)
-    makes the whole file INVALID -> refuse. Returns [{name, kind, root|None, raw}]."""
-    plat = plat or platform.system(); out = []
-    for ln, line in enumerate(text.splitlines(), 1):
-        line = line.rstrip("\r\n")
-        if not line.strip(): continue
-        f = line.split(":")
-        if len(f) != 6 or not f[0].strip() or f[0] != f[0].strip() or f[0] == "*": _refuse("REGISTRATION_INVALID", "registration file has a malformed record", line=ln)
-        if f[5] == "DISK":
-            root = f[1]
-            if plat == "Windows":
-                if f[2:5] != ["*", "", ""] or not re.fullmatch(r"[A-Za-z]\\[^\\\"'?*<>|][^\"'?*<>|]*", root) or "\\\\" in root or "/" in root: _refuse("REGISTRATION_INVALID", "malformed Windows Disk registration", line=ln)
-                canon_in = root[0] + ":" + root[1:]
-            else:
-                if f[2:5] != ["", "", ""] or not root.startswith("/") or root.startswith("//") or '"' in root or "'" in root: _refuse("REGISTRATION_INVALID", "malformed Disk registration root (must be absolute, not UNC, unquoted)", line=ln)
-                canon_in = root
-            if any(seg in ("", ".", "..") for seg in re.split(r"[\\/]", canon_in.split(":", 1)[-1])[1:]): _refuse("REGISTRATION_INVALID", "registration root contains empty, '.' or '..' segments", line=ln)
-            out.append({"name": f[0], "kind": "Disk", "root": root, "path": canon_in, "raw": line})
-        elif f[5].upper() in NETWORK_TYPES: out.append({"name": f[0], "kind": "NETWORK", "root": None, "path": None, "raw": line})
-        else: _refuse("REGISTRATION_INVALID", "unknown registration type suffix", line=ln, suffix=f[5][:20])
-    return out
+def verify_profile_files(prov, gov):
+    """Every sealed profile file must still hash to its recorded value, and the registration file must still be exactly the one
+    authorized Disk line. A profile or registration edited after the seal fails the next operation."""
+    root = prov["profile_root"]
+    for rel, want in sorted(prov["files"].items()):
+        p = os.path.join(root, rel)
+        try: got = sha(open(p, "rb").read())
+        except OSError as e: _refuse("SESSION_PROFILE_MUTATED", "sealed profile file is unreadable", file=rel, cause=type(e).__name__)
+        if got != want: _refuse("SESSION_PROFILE_MUTATED", "sealed profile file changed after the seal", file=rel)
+    regfile = os.path.join(root, prov["registration_relpath"])
+    try: text = open(regfile, "rb").read().decode("utf-8", "replace")
+    except OSError: _refuse("SESSION_PROFILE_MUTATED", "profile registration file unreadable")
+    lines = [l for l in text.splitlines() if l.strip()]
+    if lines != [gov["registration_line"]]:
+        _refuse("SESSION_PROFILE_MUTATED", "profile registration is not exactly the one authorized Disk library", entries=len(lines))
+    return regfile
 
 def resolve_physical_root(path):
-    """Canonical physical identity of a registered Disk root: strict realpath (symlinks/junctions resolved, must exist, must be a
-    directory) plus device/inode (Windows: volume serial / file index via os.stat). Returns {"realpath", "dev", "ino"}."""
+    """Canonical physical identity of the authorized root: strict realpath (symlinks resolved), must exist, must be a directory, plus
+    device/inode. Textual aliases collapse; a different physical directory can never pass."""
     try: rp = os.path.realpath(path, strict=True); st = os.stat(rp)
-    except (OSError, ValueError) as e: _refuse("LIBRARY_IDENTITY_UNAVAILABLE", "registered Disk root does not resolve to an existing directory", path=path, cause=type(e).__name__)
-    if not os.path.isdir(rp): _refuse("LIBRARY_IDENTITY_UNAVAILABLE", "registered Disk root is not a directory", path=path)
-    if platform.system() == "Windows": rp_cmp = os.path.normcase(rp)
-    else: rp_cmp = rp
-    return {"realpath": rp_cmp, "dev": st.st_dev, "ino": st.st_ino}
+    except (OSError, ValueError) as e: _refuse("LIBRARY_IDENTITY_UNAVAILABLE", "authorized Disk root does not resolve to an existing directory", path=path, cause=type(e).__name__)
+    if not os.path.isdir(rp): _refuse("LIBRARY_IDENTITY_UNAVAILABLE", "authorized Disk root is not a directory", path=path)
+    return {"realpath": rp, "dev": st.st_dev, "ino": st.st_ino}
 
-def canon_compare(a, b): return (os.path.normcase(a) == os.path.normcase(b)) if platform.system() == "Windows" else (a == b)
+# ---------------------------------------------------------------- Linux session/process attestation (real /proc facts only)
+class SystemProbe:
+    """The only source of process facts. Injected into Worker() so offline tests can supply a deterministic probe; the production CLI
+    never passes one and never reads an environment switch (PRR-F06)."""
+    def uid(self): return os.getuid()
+    def boot_time(self):
+        for l in open("/proc/stat"):
+            if l.startswith("btime"): return int(l.split()[1])
+        raise OSError("btime unavailable")
+    def pids(self): return [int(p) for p in os.listdir("/proc") if p.isdigit()]
+    def exe(self, pid):
+        try: return os.path.realpath(os.readlink(f"/proc/{pid}/exe"))
+        except OSError: return None
+    def proc_uid(self, pid):
+        try:
+            for l in open(f"/proc/{pid}/status"):
+                if l.startswith("Uid:"): return int(l.split()[1])
+        except OSError: return None
+        return None
+    def ppid(self, pid):
+        try:
+            for l in open(f"/proc/{pid}/status"):
+                if l.startswith("PPid:"): return int(l.split()[1])
+        except OSError: return None
+        return None
+    def start_ticks(self, pid):
+        try: return int(open(f"/proc/{pid}/stat").read().rsplit(")", 1)[1].split()[19])   # field 22, same technique as frozen Phase 1
+        except (OSError, IndexError, ValueError): return None
+    def environ(self, pid):
+        try: raw = open(f"/proc/{pid}/environ", "rb").read()
+        except OSError: return None
+        out = {}
+        for item in raw.split(b"\0"):
+            if b"=" in item:
+                k, _, v = item.partition(b"=")
+                out[k.decode("utf-8", "replace")] = v.decode("utf-8", "replace")
+        return out
+    def listening_socket_pids(self, port):
+        """PIDs holding a LISTEN socket on this TCP port, resolved through /proc/net/tcp inodes and /proc/<pid>/fd — the endpoint the
+        Resolve scripting library connects to on 127.0.0.1."""
+        inodes = set()
+        for f in ("/proc/net/tcp", "/proc/net/tcp6"):
+            try: lines = open(f).read().splitlines()[1:]
+            except OSError: continue
+            for ln in lines:
+                p = ln.split()
+                if len(p) < 10 or p[3] != "0A": continue
+                try:
+                    if int(p[1].split(":")[1], 16) == port: inodes.add(p[9])
+                except (ValueError, IndexError): continue
+        if not inodes: return set()
+        owners = set()
+        for pid in self.pids():
+            try: fds = os.listdir(f"/proc/{pid}/fd")
+            except OSError: continue
+            for fd in fds:
+                try: tgt = os.readlink(f"/proc/{pid}/fd/{fd}")
+                except OSError: continue
+                if tgt.startswith("socket:[") and tgt[8:-1] in inodes: owners.add(pid); break
+        return owners
+    def stat_file(self, path):
+        try:
+            st = os.stat(path); return {"realpath": os.path.realpath(path), "bytes": st.st_size, "uid": st.st_uid}
+        except OSError: return None
 
-def unique_disk_registration(entries, name):
-    """Exactly one Disk entry with this name AND no other entry (any name) sharing its canonical path; else AMBIGUOUS."""
-    same = [e for e in entries if e["name"] == name]
-    if len(same) != 1 or same[0]["kind"] != "Disk": _refuse("REGISTRATION_AMBIGUOUS", "registration does not hold exactly one Disk entry for the current library name", name=name, matches=len(same))
-    e = same[0]
-    if any(o is not e and o["kind"] == "Disk" and canon_compare(o["path"], e["path"]) for o in entries): _refuse("REGISTRATION_AMBIGUOUS", "another registration shares this library's root", name=name)
-    return e
-
-UUID_BYTES_RE = None
-def project_content_anchor(realpath, proj, tls, project_names):
-    """Bind the OPEN handle to the PHYSICAL root (PRR-F03 redirection/clone law): under <root>/Resolve Projects/Users/*/Projects/
-    exactly one project directory carries the current project's name, its Project.db contains the current project UUID and every
-    reported timeline UUID, and the on-disk project set equals Resolve's project list for the current library. A registration
-    pointing at a different physical library, or a diverged clone, fails. (A byte-identical clone is indistinguishable by any
-    read-only observation and discloses nothing beyond the authorized bytes — documented residual.)"""
-    base = os.path.join(realpath, "Resolve Projects", "Users")
-    try: users = sorted(os.listdir(base))
-    except OSError: _refuse("CONTENT_ANCHOR_MISSING", "physical root has no Resolve Projects/Users tree", realpath=realpath)
-    hits, on_disk = [], set()
-    for u in users:
-        pdir = os.path.join(base, u, "Projects")
-        try: names = os.listdir(pdir)
-        except OSError: continue
-        for n in names:
-            if os.path.isdir(os.path.join(pdir, n)): on_disk.add(n)
-            if n == proj["name"] and os.path.isfile(os.path.join(pdir, n, "Project.db")): hits.append(os.path.join(pdir, n, "Project.db"))
-    if len(hits) != 1: _refuse("CONTENT_ANCHOR_MISMATCH", "current project is not present exactly once under the physical root", project=proj["name"], hits=len(hits))
-    try: blob = open(hits[0], "rb").read()
-    except OSError: _refuse("CONTENT_ANCHOR_MISSING", "cannot read Project.db under the physical root")
-    low = blob.lower()
-    want = [proj["uuid"]] + [t["uuid"] for t in (tls or []) if t.get("uuid")]
-    missing = [u for u in want if u.lower().encode() not in low]
-    if missing: _refuse("CONTENT_ANCHOR_MISMATCH", "Project.db under the physical root does not contain the identities Resolve reports (redirected registration or diverged clone)", missing=missing[:4])
-    if project_names is not None and set(project_names) != on_disk: _refuse("CONTENT_ANCHOR_MISMATCH", "project set on disk differs from the project list Resolve reports for the current library", on_disk=len(on_disk), reported=len(project_names))
-    return {"project_db": hits[0], "project_db_sha256": sha(blob), "project_db_bytes": len(blob)}
+def attest_isolated_session(probe, gov, prov, hz=None):
+    """Bind the live Resolve session to the sealed profile. Every clause is a real, observable Linux fact; any failure refuses before the
+    scripting library is touched. Returns the attested session identity."""
+    binary = gov["resolve_binary"]["realpath"]
+    pids = [p for p in probe.pids() if probe.exe(p) == binary]
+    if len(pids) != 1:
+        _refuse("SESSION_AMBIGUOUS" if pids else "SESSION_NOT_RUNNING",
+                "exactly one Resolve process must be running for a production-read session" if pids else "no Resolve process is running for this session",
+                resolve_processes=len(pids))
+    pid = pids[0]
+    if probe.proc_uid(pid) != probe.uid(): _refuse("SESSION_OWNER_MISMATCH", "the Resolve process is not owned by this user", pid=pid)
+    st = probe.stat_file(binary)
+    if not st or st["realpath"] != binary: _refuse("SESSION_EXECUTABLE_MISMATCH", "the pinned Resolve executable is missing or moved", expected=binary)
+    if st["bytes"] != gov["resolve_binary"]["bytes"]: _refuse("SESSION_EXECUTABLE_MISMATCH", "the Resolve executable differs from the sealed identity", expected_bytes=gov["resolve_binary"]["bytes"], actual_bytes=st["bytes"])
+    ticks = probe.start_ticks(pid)
+    if ticks is None: _refuse("SESSION_PROCESS_UNREADABLE", "process start time unavailable", pid=pid)
+    hz = hz or os.sysconf("SC_CLK_TCK")
+    start_epoch = int(probe.boot_time() + ticks / hz)
+    if start_epoch < prov["seal_epoch"]:
+        _refuse("SESSION_PREDATES_PROFILE", "the Resolve process started before the isolated profile was sealed; a pre-existing session is never eligible",
+                process_start_epoch=start_epoch, profile_seal_epoch=prov["seal_epoch"])
+    env = probe.environ(pid)
+    if not env: _refuse("SESSION_PROCESS_UNREADABLE", "process environment unavailable; the session cannot be attested", pid=pid)
+    for var, rel in gov["profile_env"].items():
+        want = os.path.join(prov["profile_root"], rel) if rel else prov["profile_root"]
+        if env.get(var) != want:
+            _refuse("SESSION_PROFILE_MISMATCH", "the Resolve process was not launched with the sealed isolated profile", variable=var, expected=want, actual=env.get(var))
+    port = gov["script_server_port"]
+    owners = probe.listening_socket_pids(port)
+    if not owners: _refuse("SESSION_HANDLE_UNBOUND", "no process owns the Resolve scripting endpoint; the API handle cannot be bound to this session", port=port)
+    for owner in sorted(owners):
+        seen, cur, ok = set(), owner, False
+        while cur and cur not in seen:
+            if cur == pid: ok = True; break
+            seen.add(cur); cur = probe.ppid(cur)
+        if not ok:
+            _refuse("SESSION_HANDLE_UNBOUND", "the Resolve scripting endpoint is owned by a process outside the attested session", port=port, owner_pid=owner, session_pid=pid)
+    return {"pid": pid, "start_epoch": start_epoch, "executable": binary, "uid": probe.uid(), "script_server_port": port, "endpoint_owner_pids": sorted(owners)}
 
 # ---------------------------------------------------------------- SSH-session lifetime anchor (F-03 part 1)
 # Live finding (2026-09-20, VIDLAP2): when the controlling ssh session dies, Windows OpenSSH does NOT kill the
@@ -427,20 +562,30 @@ class ResolvePool:
 
 # ---------------------------------------------------------------- Worker
 class Worker:
-    def __init__(self, host_id, secret, state_dir, api, require_library=None, mode="QUALIFICATION_READ", policy_path=None, policy_sha256=None, authority_path=None):
+    def __init__(self, host_id, secret, state_dir, api, require_library=None, mode="QUALIFICATION_READ", policy_path=None, policy_sha256=None,
+                 authority_path=None, session_path=None, session_sha256=None, probe=None):
         hn = socket.gethostname()
         if hn.lower() != host_id.lower(): raise SystemExit(f"HOST_ID_MISMATCH: --host-id {host_id} but hostname is {hn}")
         self.host_id, self.secret, self.state_dir, self.api = host_id, secret, state_dir, api
         self.require_library = require_library            # (name, root_or_None) or None  (QUALIFICATION_READ gate, frozen semantics)
         if mode not in READ_PROFILES: raise SystemExit(f"REFUSED: unknown --mode {mode!r}")
         self.mode, self.policy_path, self.policy_sha256, self.authority_path = mode, policy_path, policy_sha256, authority_path
-        self.own_sha256 = sha(open(os.path.abspath(__file__), "rb").read())      # this worker's own bytes: the identity policies must name
+        self.session_path, self.session_sha256 = session_path, session_sha256
+        self.probe = probe or SystemProbe()          # constructor injection only; never selectable from the CLI or the environment
+        self.session_identity, self._policy_cache = None, None
+        self.own_sha256 = self.own_sha()             # reported identity; re-hashed per operation, never trusted from this cache
         if mode == "PRODUCTION_READ":
-            if require_library: raise SystemExit("REFUSED: --require-library is a QUALIFICATION_READ gate; PRODUCTION_READ takes only --production-policy/--production-authority")
-            if not (policy_path and policy_sha256 and authority_path): raise SystemExit("REFUSED: PRODUCTION_READ requires --production-policy PATH, --production-policy-sha256 DIGEST and --production-authority PATH")
-            try: load_production_policy(policy_path, policy_sha256, authority_path, host_id, self.own_sha256)   # startup: fail closed before binding
+            if require_library: raise SystemExit("REFUSED: --require-library is a QUALIFICATION_READ gate; PRODUCTION_READ takes the production chain instead")
+            if not (policy_path and policy_sha256 and authority_path and session_path and session_sha256):
+                raise SystemExit("REFUSED: PRODUCTION_READ requires --production-authority, --production-policy, --production-policy-sha256, --production-session and --production-session-sha256")
+            if host_id not in PRODUCTION_HOSTS: raise SystemExit(f"REFUSED: production-read v1 supports only {PRODUCTION_HOSTS}; {host_id!r} is not authorizable")
+            if platform.system() != PRODUCTION_PLATFORM: raise SystemExit("REFUSED: production-read v1 supports Linux only; Windows production reads are structurally unsupported")
+            try:                                      # startup: the whole chain must verify before the socket binds
+                pol, _ = load_production_policy(policy_path, policy_sha256, authority_path, host_id, self.own_sha256)
+                load_session_profile(session_path, session_sha256, pol, policy_sha256, sha(open(authority_path, "rb").read()), self.own_sha256, host_id)
             except OpError as e: raise SystemExit(f"REFUSED: {e.message} {json.dumps(e.detail)}")
-        elif policy_path or policy_sha256 or authority_path: raise SystemExit("REFUSED: --production-policy/--production-authority are only valid with --mode PRODUCTION_READ")
+        elif policy_path or policy_sha256 or authority_path or session_path or session_sha256:
+            raise SystemExit("REFUSED: the production chain arguments are only valid with --mode PRODUCTION_READ")
         os.makedirs(state_dir, exist_ok=True)
         gpath = os.path.join(state_dir, "generation")
         gen = int(open(gpath).read() or 0) + 1 if os.path.exists(gpath) else 1
@@ -448,14 +593,15 @@ class Worker:
         self.identity = {"host_id": host_id, "hostname": hn, "platform": platform.system().lower(),
                          "worker_instance_id": uuid.uuid4().hex, "worker_generation": gen,
                          "worker_started_at": now_iso(), "worker_version": WORKER_VERSION, "protocol": PROTOCOL,
-                         "read_profile": mode, "production_policy_sha256": policy_sha256, "worker_sha256": self.own_sha256, "derived_from": DERIVED_FROM}
+                         "read_profile": mode, "production_policy_sha256": policy_sha256, "session_profile_sha256": session_sha256,
+                         "worker_sha256": self.own_sha256, "derived_from": DERIVED_FROM}
         self.replay = ReplayGuard(os.path.join(state_dir, "replay.jsonl"))
         self.pool = ResolvePool()
         self.jlock = threading.Lock(); self.journal = open(os.path.join(state_dir, "journal.jsonl"), "a")
         self.last_resolve = None                           # last successful snapshot summary {observed_at, available, version, project_uuid}
         self.journal_event({"event": "WORKER_START", "worker_instance_id": self.identity["worker_instance_id"], "worker_generation": gen,
                             "replay_entries_loaded": self.replay.loaded, "require_library": require_library and require_library[0],
-                            "read_profile": mode, "production_policy_sha256": policy_sha256, "worker_sha256": self.own_sha256})
+                            "read_profile": mode, "production_policy_sha256": policy_sha256, "session_profile_sha256": session_sha256, "worker_sha256": self.own_sha256})
 
     # ---- journaling (F-04): one lock, fsync per line, never headers/keys/bodies
     def journal_event(self, rec):
@@ -503,70 +649,89 @@ class Worker:
             if reg is None or os.path.normpath(reg) != os.path.normpath(root): raise OpError("LIBRARY_MISMATCH", "library registration root does not match configured root", {"required_root": root, "registered_root": reg})
 
     # ---- PRODUCTION_READ gates (operation-time; nothing cached across calls; every decision journaled)
-    # The authorization record is a PER-REQUEST slot owned by handle(), not a field of the snapshot dict: a refusal discards the
-    # snapshot, so a decision recorded there would be lost exactly when it matters most (PRR-F04). Stages: policy | library |
-    # project | content (gates), resolve (Resolve state insufficient), pre-resolve (refused before any Resolve attach).
+    # The authorization record is a PER-REQUEST slot owned by handle(), not a field of the snapshot dict: a refusal discards the snapshot,
+    # so a decision recorded there would be lost exactly when it matters most (PRR-F04). Stages:
+    # policy | authority | profile | session | library | project (gates), resolve (Resolve state insufficient), pre-resolve (refused earlier).
     def new_authz(self):
-        return ({"read_profile": "PRODUCTION_READ", "decision": "NOT_REACHED", "stage": None, "policy_sha256": self.policy_sha256}
-                if self.mode == "PRODUCTION_READ" else {"read_profile": self.mode, "decision": "NOT_APPLICABLE"})
+        return ({"read_profile": "PRODUCTION_READ", "decision": "NOT_REACHED", "stage": None, "policy_sha256": self.policy_sha256,
+                 "session_profile_sha256": self.session_sha256} if self.mode == "PRODUCTION_READ"
+                else {"read_profile": self.mode, "decision": "NOT_APPLICABLE"})
     def _deny(self, a, stage, err):
         a.update(decision="DENIED", stage=stage, reason=(err.detail or {}).get("reason") or err.code, code=err.code); raise err
     def _gates(self, a):
-        """(library_check, project_check) for snapshot(); production gates are bound to this request's authorization slot."""
         if self.mode != "PRODUCTION_READ": return self.check_library, None
         return (lambda res: self.check_library_production(res, a)), (lambda res, proj, pm, p, tl: self.check_project_production(res, proj, pm, p, tl, a))
 
-    def _policy_libraries(self):
-        pol, _ = load_production_policy(self.policy_path, self.policy_sha256, self.authority_path, self.host_id, self.own_sha256)   # re-verified EVERY call
-        return next(h for k, h in pol["hosts"].items() if k.lower() == self.host_id.lower())["libraries"]
+    def own_sha(self):
+        """Re-hashed at EVERY operation, not cached at construction (RRR-P303): the bytes claiming authority are the bytes on disk now."""
+        return sha(open(os.path.abspath(__file__), "rb").read())
+
+    def production_chain(self, a):
+        """Accepted authority -> policy -> sealed profile -> profile files -> physical root. Re-verified per operation."""
+        own = self.own_sha()
+        try: pol, rec = load_production_policy(self.policy_path, self.policy_sha256, self.authority_path, self.host_id, own)
+        except OpError as e: self._deny(a, "authority" if (e.detail or {}).get("reason", "").startswith("AUTHORITY") else "policy", e)
+        try: prof, gov, prov = load_session_profile(self.session_path, self.session_sha256, pol, self.policy_sha256, sha(open(self.authority_path, "rb").read()), own, self.host_id)
+        except OpError as e: self._deny(a, "profile", e)
+        try:
+            verify_profile_files(prov, gov)
+            phys = resolve_physical_root(gov["library"]["canonical_root"])
+            if phys["realpath"] != gov["library"]["canonical_root"] or phys["dev"] != gov["library"]["physical_dev"] or phys["ino"] != gov["library"]["physical_ino"]:
+                _refuse("LIBRARY_NOT_AUTHORIZED", "the authorized root no longer resolves to the pinned physical identity", expected=gov["library"], actual=phys)
+        except OpError as e: self._deny(a, "profile" if (e.detail or {}).get("reason", "").startswith("SESSION_PROFILE") else "library", e)
+        a["session_id"] = gov.get("session_id"); a["authority_sha256"] = gov.get("authority_sha256")
+        a["library"] = {"kind": "Disk", "name": gov["library"]["name"], "canonical_root": phys["realpath"], "dev": phys["dev"], "ino": phys["ino"]}
+        return pol, rec, gov, prov
+
+    def attest_session(self, a):
+        """Session provenance, established BEFORE the Resolve scripting library is touched. Also pins the attested process for this worker
+        instance: a Resolve restart produces a different identity and every later read refuses until the operator seals/attests again."""
+        pol, rec, gov, prov = self.production_chain(a)
+        try: ident = attest_isolated_session(self.probe, gov, prov)
+        except OpError as e: self._deny(a, "session", e)
+        if self.session_identity is None: self.session_identity = ident
+        elif (ident["pid"], ident["start_epoch"]) != (self.session_identity["pid"], self.session_identity["start_epoch"]):
+            try: _refuse("SESSION_RESTARTED", "the attested Resolve session was replaced; a new session must be sealed and attested",
+                         attested=self.session_identity, observed={"pid": ident["pid"], "start_epoch": ident["start_epoch"]})
+            except OpError as e: self._deny(a, "session", e)
+        a["session"] = {"pid": ident["pid"], "start_epoch": ident["start_epoch"], "executable": ident["executable"],
+                        "endpoint_owner_pids": ident["endpoint_owner_pids"], "script_server_port": ident["script_server_port"]}
+        a["allowed_projects"] = len(pol["projects"]); self._policy_cache = pol
+        return pol
 
     def check_library_production(self, res, a):
-        res["authorization"] = a                     # same object: a success mirrors into the envelope, a refusal survives in handle()'s slot
+        """The open library must be the single library the sealed profile registers. No discovery, no inference: the session could only
+        have been born into a profile exposing this one Disk library."""
+        res["authorization"] = a
         lib = res.get("library") or {}
         actual = {"name": lib.get("name"), "type": lib.get("type"), "host": lib.get("host")}; a["library_observed"] = actual
         try:
-            libs = self._policy_libraries()
-        except OpError as e: self._deny(a, "policy", e)
-        try:
+            want = a["library"]["name"]
             if not lib.get("name"): _refuse("LIBRARY_IDENTITY_UNAVAILABLE", "current library identity unavailable", actual=actual)
-            if str(lib.get("type", "")).lower() != "disk" or str(lib.get("type", "")).upper() in NETWORK_TYPES or lib.get("host"): _refuse("LIBRARY_NOT_AUTHORIZED", "network/PostgreSQL libraries are not authorized by this candidate (v1: Disk only)", actual=actual)
-            try: text = open(registration_file(), "rb").read().decode("utf-8", "replace")
-            except OSError: _refuse("LIBRARY_IDENTITY_UNAVAILABLE", "library registration file unreadable", actual=actual)
-            entries = parse_registration_production(text)
-            e = unique_disk_registration(entries, lib["name"])
-            phys = resolve_physical_root(e["path"])
-            match = [l for l in libs if l["kind"] == "Disk" and l["name"] == lib["name"] and l["registration_root"] == e["root"] and canon_compare(l["canonical_root"], phys["realpath"])]
-            if len(match) != 1: _refuse("LIBRARY_NOT_AUTHORIZED", "current library (name + registration root + physical root) is not an authorized production-read library on this host", actual=dict(actual, registration_root=e["root"], realpath=phys["realpath"]), candidates_matched=len(match))
-            pin = match[0]
-            for k in ("physical_dev", "physical_ino"):
-                if pin.get(k) is not None and pin[k] != phys["dev" if k.endswith("dev") else "ino"]: _refuse("LIBRARY_NOT_AUTHORIZED", "physical root device/inode differs from the pinned identity", actual=phys)
-            a.update(library={"kind": "Disk", "name": lib["name"], "registration_root": e["root"], "realpath": phys["realpath"], "dev": phys["dev"], "ino": phys["ino"]}, allowed_projects=len(pin["projects"]))
+            if str(lib.get("type", "")).lower() != "disk" or str(lib.get("type", "")).upper() in NETWORK_TYPES or lib.get("host"):
+                _refuse("LIBRARY_NOT_AUTHORIZED", "network/PostgreSQL libraries are not authorized by this candidate (v1: local Disk only)", actual=actual)
+            if lib["name"] in PROHIBITED_LIBRARIES or lib["name"] != want:
+                _refuse("LIBRARY_NOT_AUTHORIZED", "the open library is not the single library registered by the sealed session profile", expected=want, actual=actual)
         except OpError as e: self._deny(a, "library", e)
 
     def check_project_production(self, res, proj, pm, p, tl, a):
-        """Double gate + content anchor: the CURRENT project UUID must be listed under the CURRENT (authorized) library, and the
-        open handle must be evidenced under the physical root (Project.db contains the project and timeline UUIDs; project set matches)."""
-        res["authorization"] = a; libm = a.get("library")
+        """Session correctness is necessary, not sufficient: the CURRENT project UUID must also be in the accepted allowlist."""
+        res["authorization"] = a
         try:
-            if not libm: _refuse("LIBRARY_NOT_AUTHORIZED", "project gate reached without an authorized library")
-        except OpError as e: self._deny(a, "library", e)
-        try:
-            entry = [l for l in self._policy_libraries() if l["kind"] == "Disk" and l["name"] == libm["name"] and l["registration_root"] == libm["registration_root"]]
-        except OpError as e: self._deny(a, "policy", e)
-        try:
-            allowed = entry[0]["projects"] if len(entry) == 1 else []
             a["project_observed"] = {"name": proj.get("name"), "uuid": proj.get("uuid")}
+            allowed = (self._policy_cache or {}).get("projects") or []
             if not proj.get("uuid") or proj["uuid"] not in allowed:
-                raise OpError("PROJECT_IDENTITY_MISMATCH", "current project is not an authorized production-read project in this library", {"reason": "PROJECT_NOT_AUTHORIZED", "actual": {"name": proj.get("name"), "uuid": proj.get("uuid")}, "library": libm["name"]})
+                raise OpError("PROJECT_IDENTITY_MISMATCH", "current project is not an authorized production-read project",
+                              {"reason": "PROJECT_NOT_AUTHORIZED", "actual": {"name": proj.get("name"), "uuid": proj.get("uuid")}, "library": a["library"]["name"]})
         except OpError as e: self._deny(a, "project", e)
-        try:
-            tls = [tl_identity(p.GetTimelineByIndex(i), i) for i in range(1, (proj.get("timeline_count") or 0) + 1)]
-            lister = getattr(pm, "GetProjectListInCurrentFolder", None)
-            names = lister() if callable(lister) else None
-            if names is None: _refuse("CONTENT_ANCHOR_MISSING", "Resolve does not expose the current library's project list; handle cannot be bound to the physical root")
-            anchor = project_content_anchor(libm["realpath"], proj, tls, names)
-        except OpError as e: self._deny(a, "content", e)
-        a.update(decision="ALLOWED", stage="content", project_uuid=proj["uuid"], content_anchor=anchor)
+        a.update(decision="ALLOWED", stage="project", project_uuid=proj["uuid"])
+
+    def _snapshot_for(self, a):
+        """One Resolve attachment per operation. In PRODUCTION_READ the whole chain and the session are attested first, so nothing is read
+        from a session that was not born into the sealed profile."""
+        if self.mode == "PRODUCTION_READ": self.attest_session(a)
+        lib_check, proj_check = self._gates(a)
+        return snapshot(self.api, lib_check, proj_check)
 
     # ---- request execution
     def execute(self, env, deadline_s, a):
@@ -586,11 +751,11 @@ class Worker:
         """Worker liveness + pool state + a BOUNDED Resolve probe that is skipped when the pool is saturated.
         Never blocks on Resolve longer than HEALTH_PROBE_S; never fails because Resolve is hung or absent."""
         pool = self.pool.snapshot(); res = {"available": None, "probe": None, "pool": pool, "last_observed": self.last_resolve, **base}
-        proj = tl = None; a = a if a is not None else self.new_authz(); lib_check, proj_check = self._gates(a)
+        proj = tl = None; a = a if a is not None else self.new_authz()
         if pool["state"] == "SATURATED": res["probe"] = "SKIPPED_SATURATED"
         else:
             try:
-                _, _, _, r, proj, tl = self.pool.run(lambda: snapshot(self.api, lib_check, proj_check), min(HEALTH_PROBE_S, deadline_s))
+                _, _, _, r, proj, tl = self.pool.run(lambda: self._snapshot_for(a), min(HEALTH_PROBE_S, deadline_s))
                 res.update(r); res["probe"] = "OK"; self.note_resolve(r, proj)
             except FutTimeout: res["probe"] = "TIMEOUT"
             except OpError as e:
@@ -607,8 +772,8 @@ class Worker:
         self.last_resolve = {"observed_at": now_iso(), "available": True, "version": res.get("version"), "library": (res.get("library") or {}).get("name"), "project_uuid": proj and proj["uuid"]}
 
     def resolve_section(self, op, params, expected, base, a=None):
-        a = a if a is not None else self.new_authz(); lib_check, proj_check = self._gates(a)
-        r, pm, p, res, proj, tl = snapshot(self.api, lib_check, proj_check)   # the only Resolve attachment; library gate before any project read, project gate before any timeline/settings/media read
+        a = a if a is not None else self.new_authz()
+        r, pm, p, res, proj, tl = self._snapshot_for(a)   # session attested first; then library gate before any project read, project gate before any timeline/settings/media read
         if self.mode == "PRODUCTION_READ" and not p: raise OpError("PROJECT_NOT_OPEN", "no project open; production reads never open or switch a project")
         res.update(base); self.check_expected(expected, res, proj, tl); self.note_resolve(res, proj)
         if op in ("get_current_project", "get_current_timeline") and not p: raise OpError("PROJECT_NOT_OPEN", "no project open on this host")
@@ -642,8 +807,8 @@ class Worker:
                      stage=a.get("stage") or ("resolve" if (a.get("library") or code in ("RESOLVE_UNAVAILABLE", "TIMEOUT", "WORKER_SATURATED", "PROJECT_NOT_OPEN", "TIMELINE_NOT_FOUND")) else "pre-resolve"),
                      reason=a.get("reason") or (err.get("detail") or {}).get("reason") or err.get("code"), code=code)
         a["target"] = env.get("target_host"); a["op"] = env.get("op")
-        lib = a.get("library") or {}; a["library"] = {k: lib.get(k) for k in ("kind", "name", "registration_root", "realpath", "dev", "ino")} if lib else a.get("library_observed")
-        a.pop("allowed_projects", None); ca = a.get("content_anchor"); a["content_anchor"] = {"project_db_sha256": ca.get("project_db_sha256")} if isinstance(ca, dict) else None
+        lib = a.get("library") or {}; a["library"] = {k: lib.get(k) for k in ("kind", "name", "canonical_root", "dev", "ino")} if lib else a.get("library_observed")
+        a.pop("allowed_projects", None)
         return a
 
     def handle(self, env, deadline_ms, client=None):
@@ -717,6 +882,8 @@ def main():
     ap.add_argument("--production-policy", action=Once, help="PRODUCTION_READ: path to the compiled runtime policy (vidtoolz.resolveProductionReadRuntimePolicy.v1)")
     ap.add_argument("--production-policy-sha256", action=Once, help="PRODUCTION_READ: pinned sha256 of the policy FILE; re-verified at every operation")
     ap.add_argument("--production-authority", action=Once, help="PRODUCTION_READ: path to the ACCEPTED source authority record the policy was compiled from; bytes and acceptance semantics re-verified at every operation")
+    ap.add_argument("--production-session", action=Once, help="PRODUCTION_READ: path to the sealed isolated session profile manifest")
+    ap.add_argument("--production-session-sha256", action=Once, help="PRODUCTION_READ: pinned sha256 of the session profile manifest FILE; re-verified at every operation")
     a = ap.parse_args()
     if a.mode is None: a.mode = "QUALIFICATION_READ"
     if a.bind != BIND: raise SystemExit("LOOPBACK_ONLY: worker binds 127.0.0.1 only; refusing --bind " + a.bind)
@@ -726,7 +893,8 @@ def main():
     if a.require_library:
         name, _, root = a.require_library.partition("="); req = (name, root or None)
         if name in PROHIBITED_LIBRARIES: raise SystemExit("REFUSED: --require-library names a prohibited library")
-    srv = ThreadingHTTPServer((BIND, a.port), Handler); srv.worker = Worker(a.host_id, secret, a.state_dir, load_production_api(), req, a.mode, a.production_policy, a.production_policy_sha256, a.production_authority)
+    srv = ThreadingHTTPServer((BIND, a.port), Handler); srv.worker = Worker(a.host_id, secret, a.state_dir, load_production_api(), req, a.mode, a.production_policy, a.production_policy_sha256,
+                                                                       a.production_authority, a.production_session, a.production_session_sha256)
     anchor = None
     if a.exit_with_session:
         anchor = find_session_anchor()
@@ -739,7 +907,7 @@ def main():
             srv.worker.journal_event({"event": "CONTROLLER_PATH_LOST", "port": a.liveness_port, "misses": misses, "worker_instance_id": srv.worker.identity["worker_instance_id"]}); os._exit(0)
         watch_controller_path(a.liveness_port, a.liveness_interval, a.liveness_strikes, lost, srv.worker.journal_event)
     print(json.dumps({"worker_up": srv.worker.identity, "bind": f"{BIND}:{a.port}", "session_anchor_pid": anchor, "liveness_port": a.liveness_port,
-                      "require_library": req and req[0], "read_profile": a.mode, "production_policy_sha256": a.production_policy_sha256, "worker_sha256": srv.worker.own_sha256,
+                      "require_library": req and req[0], "read_profile": a.mode, "production_policy_sha256": a.production_policy_sha256, "session_profile_sha256": a.production_session_sha256, "worker_sha256": srv.worker.own_sha256,
                       "replay_entries_loaded": srv.worker.replay.loaded}), flush=True); srv.serve_forever()
 
 if __name__ == "__main__": main()
